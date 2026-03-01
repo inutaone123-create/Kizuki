@@ -1,252 +1,189 @@
-# AGENT MASTER PLAN
-# Claude Code エージェント実行用マスタープラン
+# 🏯 AGENT MASTER PLAN — Kizuki（イシュー管理 × 作業メモ）
 
-このドキュメントは、Dev Container環境でClaude Codeエージェントがプロジェクトを自律的に実行するための設計書です。
-**プロジェクト開始前に、`{{...}}` のプレースホルダーをすべて埋めてください。**
+## プロジェクト概要
 
----
+| 項目 | 内容 |
+|------|------|
+| プロジェクト名 | Kizuki |
+| 目的 | イシュー管理と作業メモを一体化した個人用カンバンツール |
+| 技術スタック | Python (FastAPI) + SQLite + HTML/CSS/JavaScript |
+| 対象ユーザー | 自分一人（将来的に多ユーザー対応へ拡張予定） |
 
-## 🎯 プロジェクト目標
+## ゴール
 
-### プロジェクト名
-{{PROJECT_TITLE}}
-
-### 最終成果物
-1. {{DELIVERABLE_1}}
-2. {{DELIVERABLE_2}}
-3. {{DELIVERABLE_3}}
-<!-- 必要に応じて追加 -->
-
-### 参考・元ソース（あれば）
-- **著者/出典**: {{SOURCE_AUTHOR}}
-- **URL/DOI**: {{SOURCE_URL}}
-- **ライセンス**: {{SOURCE_LICENSE}}
-
-### このプロジェクトのライセンス
-- **ライセンス**: {{LICENSE}}
-- **帰属表示**: {{ATTRIBUTION_NOTE}}
+カンバンボード形式でイシューを管理し、各イシューに日付付きの作業メモ（Markdown）を紐づけられるWebアプリを構築する。
 
 ---
 
-## 🐳 Dev Container環境
+## フェーズ設計
 
-### 実行環境
-- **場所**: Dev Container内
-- **Claude Code**: コンテナ内にインストール済み
-- **作業ディレクトリ**: /workspace
+### Phase 0：環境構築・初期セットアップ
 
-### 前提条件
-- VSCode with Dev Containers拡張機能
-- Docker Desktop（WSL2バックエンド）
-- 初期設定ファイル（Dockerfile等）は既に配置済み
+**目標:** プロジェクト構成を整備し、FastAPIが起動できる状態にする
+
+**タスク:**
+- [ ] Pythonプロジェクト構成を作成（`src/`, `tests/`, `static/`, `templates/`）
+- [ ] `requirements.txt` を作成（fastapi, uvicorn, sqlalchemy, python-multipart, markdown）
+- [ ] FastAPIのエントリーポイント（`src/main.py`）を作成
+- [ ] `http://localhost:8000` でHello Worldが返ることを確認
+
+**完了条件:** `uvicorn src.main:app --reload` で起動し、ブラウザからアクセスできる
 
 ---
 
-## 📁 プロジェクト構造（予定）
+### Phase 1：データモデル設計 & DB構築
+
+**目標:** SQLiteのテーブル設計と初期化スクリプトを作成する
+
+**データモデル:**
 
 ```
-{{PROJECT_NAME}}/
-├── README.md
-├── LICENSE
-├── Dockerfile
-├── docker-compose.yml
-├── .devcontainer/
-├── CLAUDE.md
-├── docs/
-│   ├── COMPLETION_REPORT.md
-│   └── IMPLEMENTATION_NOTES.md
-├── features/              # BDD仕様
-│   ├── *.feature
-│   └── steps/
-{{ADDITIONAL_STRUCTURE}}
+Issue（イシュー）
+  - id: INTEGER PRIMARY KEY
+  - title: TEXT NOT NULL
+  - description: TEXT
+  - status: TEXT  -- 'todo' | 'in_progress' | 'done'
+  - priority: TEXT  -- 'high' | 'medium' | 'low'
+  - category: TEXT
+  - tags: TEXT  -- カンマ区切りで保存
+  - created_at: DATETIME
+  - updated_at: DATETIME
+
+WorkLog（作業メモ）
+  - id: INTEGER PRIMARY KEY
+  - issue_id: INTEGER (FK -> Issue.id)
+  - content: TEXT  -- Markdown形式
+  - logged_at: DATE  -- 日付
+  - created_at: DATETIME
 ```
 
+**タスク:**
+- [ ] SQLAlchemyでモデル定義（`src/models.py`）
+- [ ] DBの初期化処理（`src/database.py`）
+- [ ] アプリ起動時にテーブルが自動作成されること確認
+- [ ] サンプルデータ投入スクリプト（`scripts/seed.py`）
+
+**完了条件:** DBファイルが生成され、サンプルデータが挿入できる
+
 ---
 
-## 🔢 実行フェーズ
+### Phase 2：API実装（CRUD）
 
-### Phase 0: 確認と準備
-- 現在地確認（/workspace）
-- 既存ファイル確認
-- Git設定（`git config --global --add safe.directory /workspace`）
+**目標:** イシューと作業メモのREST APIを実装する
 
-### Phase 1: ライセンスとドキュメント基盤
-- LICENSE作成
-- README.md作成（帰属表示含む）
+**APIエンドポイント:**
 
-### Phase 2: プロジェクト設定
-- .gitignore
-- .vscode/settings.json
+```
+# イシュー
+GET    /api/issues              -- 一覧取得（ステータス・優先度・カテゴリでフィルタ可）
+POST   /api/issues              -- 新規作成
+GET    /api/issues/{id}         -- 詳細取得
+PUT    /api/issues/{id}         -- 更新
+DELETE /api/issues/{id}         -- 削除
+PATCH  /api/issues/{id}/status  -- ステータスのみ更新（カンバン用）
 
-### Phase 3: BDD仕様定義
-- features/*.feature 作成（以下のGherkinひな型を参考に）
-- Step定義ファイル作成（`features/steps/` 以下）
-
-**Gherkinひな型（`features/{{FEATURE_NAME}}.feature`）**:
-```gherkin
-Feature: {{FEATURE_NAME}}
-  {{FEATURE_DESCRIPTION}}
-
-  Scenario: {{SCENARIO_1}}
-    Given {{GIVEN_CONDITION}}
-    When {{WHEN_ACTION}}
-    Then {{THEN_RESULT}}
-
-  Scenario: エラーケース — {{SCENARIO_ERROR}}
-    Given {{ERROR_GIVEN}}
-    When {{ERROR_WHEN}}
-    Then {{ERROR_THEN}}
+# 作業メモ
+GET    /api/issues/{id}/logs    -- イシューに紐づくメモ一覧
+POST   /api/issues/{id}/logs    -- メモ追加
+DELETE /api/logs/{log_id}       -- メモ削除
 ```
 
-**Step定義ひな型（`features/steps/{{FEATURE_NAME}}_steps.py`）**:
-```python
-from behave import given, when, then
+**タスク:**
+- [ ] Pydanticスキーマ定義（`src/schemas.py`）
+- [ ] イシューCRUDルーター（`src/routers/issues.py`）
+- [ ] 作業メモCRUDルーター（`src/routers/logs.py`）
+- [ ] 全エンドポイントをcurlまたはpytestで動作確認
 
-@given(u'{{GIVEN_CONDITION}}')
-def step_given(context):
-    pass  # TODO: 実装
+**完了条件:** 全APIが正常レスポンスを返す（pytestで確認）
 
-@when(u'{{WHEN_ACTION}}')
-def step_when(context):
-    pass  # TODO: 実装
+---
 
-@then(u'{{THEN_RESULT}}')
-def step_then(context):
-    pass  # TODO: 実装
+### Phase 3：フロントエンド実装（カンバンUI）
+
+**目標:** ブラウザで使えるカンバンボードUIを作成する
+
+**画面構成:**
+
+```
+┌─────────────────────────────────────────────────┐
+│ IssueLog                          [+ 新規イシュー] │
+│ フィルター: [優先度▼] [カテゴリ▼]                  │
+├──────────────┬──────────────┬───────────────────┤
+│   未着手      │   進行中      │      完了          │
+│ ┌──────────┐ │ ┌──────────┐ │  ┌──────────┐    │
+│ │ イシュー  │ │ │ イシュー  │ │  │ イシュー  │    │
+│ │ 🔴 高    │ │ │ 🟡 中    │ │  │ 🟢 低    │    │
+│ │ タグ表示  │ │ │ タグ表示  │ │  │ タグ表示  │    │
+│ └──────────┘ │ └──────────┘ │  └──────────┘    │
+└──────────────┴──────────────┴───────────────────┘
 ```
 
-### Phase 4〜N: 実装フェーズ
-<!-- 実装するモジュール・言語・機能ごとにPhaseを定義する -->
-### Phase 4: {{IMPL_PHASE_1}}
-- {{IMPL_PHASE_1_TASKS}}
+**機能:**
+- カンバン3列（未着手 / 進行中 / 完了）
+- イシューカードのドラッグ＆ドロップでステータス変更
+- 優先度をカラー表示（🔴高 / 🟡中 / 🟢低）
+- タグ表示
+- カードクリックで詳細モーダルを開く
 
-### Phase 5: {{IMPL_PHASE_2}}
-- {{IMPL_PHASE_2_TASKS}}
+**タスク:**
+- [ ] `static/index.html` にカンバンボードUIを実装
+- [ ] `static/style.css` でスタイリング
+- [ ] `static/app.js` でAPIとの通信・ドラッグ＆ドロップ実装
+- [ ] 新規イシュー作成フォーム（モーダル）
+- [ ] イシュー編集・削除機能
 
-### Phase N-2: 検証・クロス検証
-- {{VALIDATION_TASKS}}
-
-### Phase N-1: ドキュメント生成
-- `/project:docs` を実行して全言語のAPIドキュメントを生成
-- C++/C# → Doxygen（`docs/doxygen/html/index.html`）
-- Python  → Sphinx（`docs/sphinx/_build/html/index.html`）
-- Rust    → cargo doc（`target/doc/index.html`）
-- 生成されたドキュメントに未記入の `@brief` / `"""` 等がないか確認
-- `/project:license-check` でライセンスヘッダーの最終確認
-
-### Phase N: 最終化
-- `/project:report` で `docs/COMPLETION_REPORT.md` を生成
-- `/project:qiita` で `docs/qiita_draft.md` を生成（任意）
-  - `docs/qiita_template.md` を参照して構成を確認
-  - TODO 箇所をユーザーが手動記入して完成させる
+**完了条件:** ブラウザでカンバンボードが表示され、ドラッグ＆ドロップが動く
 
 ---
 
-## 📜 ライセンス遵守要件
+### Phase 4：作業メモ機能の実装
 
-全ソースファイルに以下のヘッダーを付ける（CLAUDE.md のテンプレート参照）：
-- 帰属表示: {{LICENSE_ATTRIBUTION}}
-- ライセンス: {{LICENSE}}
+**目標:** イシュー詳細画面で作業メモの投稿・閲覧ができる
 
----
+**機能:**
+- イシュー詳細モーダル内に作業ログセクション
+- Markdownエディタ（`marked.js`を使用してプレビュー表示）
+- 日付付きメモを時系列で表示（新しい順）
+- メモの追加・削除
 
-## 🎯 共通API仕様 / インターフェース仕様
+**タスク:**
+- [ ] 詳細モーダルにWorkLogセクションを追加
+- [ ] `marked.js`（CDN）でMarkdownをHTMLにレンダリング
+- [ ] メモ投稿フォーム（テキストエリア + 日付 + 送信ボタン）
+- [ ] メモ一覧の時系列表示
+- [ ] メモ削除機能
 
-### {{FUNCTION_1}}
-- 入力: {{INPUT_1}}
-- 出力: {{OUTPUT_1}}
-- アルゴリズム/処理: {{ALGO_1}}
-
-### {{FUNCTION_2}}
-- 入力: {{INPUT_2}}
-- 出力: {{OUTPUT_2}}
-- アルゴリズム/処理: {{ALGO_2}}
-
----
-
-## ✅ 各Phaseの成功基準
-
-### Phase 0-2
-- [ ] Git設定完了
-- [ ] LICENSE, README.md 作成
-- [ ] .vscode設定完了
-
-### Phase 3
-- [ ] Feature ファイル作成
-- [ ] Gherkin構文検証
-
-### Phase 4〜N-1（各実装Phase）
-- [ ] 実装完了
-- [ ] テスト全パス
-- [ ] ライセンスヘッダー含む
-
-### Phase N-2（検証）
-- [ ] {{VALIDATION_CRITERIA}}
-
-### Phase N-1（ドキュメント生成）
-- [ ] Doxygen / Sphinx / cargo doc が警告なく生成完了
-- [ ] 全パブリック関数にドキュメントコメントあり
-- [ ] `/project:license-check` で全ファイルにヘッダーあり確認
-
-### Phase N
-- [ ] COMPLETION_REPORT.md 生成済み（`/project:report`）
-- [ ] 全テストパス確認
-- [ ] qiita_draft.md 生成済み（`/project:qiita`、任意）
+**完了条件:** イシュー詳細でMarkdownメモを投稿・閲覧・削除できる
 
 ---
 
-## 🚨 重要な制約条件
+### Phase 5：品質向上・仕上げ
 
-1. {{CONSTRAINT_1}}
-2. {{CONSTRAINT_2}}
-<!-- 数値精度・スケーリング・パス指定など、プロジェクト固有の制約を記載 -->
+**目標:** テスト・ドキュメント・使いやすさの改善
 
----
+**タスク:**
+- [ ] pytestでAPIの主要ルートをテスト（`tests/test_issues.py`, `tests/test_logs.py`）
+- [ ] 起動手順を `README.md` に記述
+- [ ] フィルター機能の動作確認（優先度・カテゴリ）
+- [ ] エラーハンドリング（存在しないIDへのアクセスなど）
+- [ ] `/project:review-code` でコードレビュー実施
 
-## 📊 期待される最終状態
-
-```bash
-# テスト実行
-{{FINAL_TEST_COMMAND}}
-# → All tests passed
-
-# 検証実行
-{{FINAL_VALIDATION_COMMAND}}
-# → All comparisons PASSED
-```
+**完了条件:** `pytest` がすべてPASS、READMEの手順で誰でも起動できる
 
 ---
 
-## 🎓 Claude Codeエージェントへの指示
+## 制約・ルール
 
-**あなた（Claude Code）は、このMASTER_PLANに従って、Dev Container内でPhase 0からPhase Nまで自律的に実行してください。**
+- `Dockerfile`, `docker-compose.yml`, `.devcontainer/` は変更しない
+- `CLAUDE.md` のルールに従って作業する
+- フロントエンドは外部CDN（marked.js, SortableJS）のみ使用可、npmビルド不要
+- DBはSQLiteファイル1つ（`data/issuelog.db`）に集約
+- APIのレスポンスはすべてJSON形式
 
-### 各Phaseで
-1. ✅ 目標を理解
-2. ✅ 必要なファイルを作成・編集
-3. ✅ テストを実行
-4. ✅ 成功基準を満たす
-5. ✅ 次のPhaseへ
+## 将来の拡張メモ（Phase 1では実装しない）
 
-### エラー発生時
-1. エラーを分析
-2. 修正方法を判断
-3. 自動的に修正
-4. 再テスト
-5. **3回試みても解決しない場合**: 作業を停止し、以下を報告してユーザーの指示を仰ぐ
-   - 現在のPhase・実行コマンド
-   - エラーメッセージ全文
-   - 試みた修正内容
-
-### 完了条件
-- 全Phaseの成功基準を満たす
-- 全テストがパス
-- ライセンス表示が完璧
-
----
-
-## 📝 補足情報
-
-### 参考リンク
-- {{REF_LINK_1}}
-- {{REF_LINK_2}}
+- ユーザー認証・マルチユーザー対応
+- スケジュール・期日カレンダー表示
+- プロセス・ワークフロー管理
+- PostgreSQL移行
+- Reactフロントエンドへの移行

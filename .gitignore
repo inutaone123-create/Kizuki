@@ -44,6 +44,9 @@ docs/sphinx/_build/
 docs/qiita_draft.md
 Doxyfile
 
+# SQLite DB（実データは除外）
+data/*.db
+
 # Results / 生成ファイル
 results/
 *-results/
