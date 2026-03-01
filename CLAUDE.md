@@ -164,7 +164,7 @@ main ← マージ → push
    ❌ 失敗した場合: 失敗したペアの言語を特定 → ステップ2（影響分析）に戻る
    ❌ 3回試みても解決しない場合: 作業を停止し、現状と問題をユーザーに報告して指示を仰ぐ
 6. **BDDテスト** — `behave features/` を実行（全シナリオ PASS を確認）
-7. **ドキュメント生成** — `/project:docs` を実行し、全言語のAPIドキュメントを生成
+7. **ドキュメント生成** — `/project:docs` を実行し、使用言語のAPIドキュメントを生成（未使用言語はスキップ）
    - C++/C# → Doxygen（`docs/doxygen/html/index.html`）
    - Python  → Sphinx（`docs/sphinx/_build/html/index.html`）
    - Rust    → cargo doc（`target/doc/<crate>/index.html`）
