@@ -1,0 +1,47 @@
+{
+  "model": "sonnet",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"[$(date '+%H:%M:%S')] [PRE] サブエージェント召喚の儀、執り行われ候\" >> /workspace/.claude/agent.log"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"[$(date '+%H:%M:%S')] [POST] サブエージェント帰還の儀、相成り候\" >> /workspace/.claude/agent.log"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"[$(date '+%H:%M:%S')] [STOP] Claude Code、本日の御役目を果たし申した\" >> /workspace/.claude/agent.log"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"[$(date '+%H:%M:%S')] [NOTIFY] $(echo $CLAUDE_NOTIFICATION | head -c 100)\" >> /workspace/.claude/agent.log"
+          }
+        ]
+      }
+    ]
+  }
+}

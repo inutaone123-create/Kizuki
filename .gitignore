@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# C++
+*.o
+*.a
+*.so
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+
+# C#
+bin/
+obj/
+*.user
+*.suo
+
+# Rust
+target/
+
+# Node
+node_modules/
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ドキュメント生成物（テンプレートはコミット対象、生成物は除外）
+docs/doxygen/
+docs/sphinx/_build/
+docs/qiita_draft.md
+Doxyfile
+
+# Results / 生成ファイル
+results/
+*-results/
+*.npy
+*.mat
+
+# Claude Code（設定・キャッシュは除外、agentsはコミット対象）
+.claude/todos/
+.claude/*.log
+.claude/agent.log

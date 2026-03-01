@@ -1,0 +1,39 @@
+{
+  "name": "{{PROJECT_NAME}}",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "dev",
+  "workspaceFolder": "/workspace",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "ms-dotnettools.csharp",
+        "rust-lang.rust-analyzer",
+        "cschlosser.doxdocgen",
+        "lextudio.restructuredtext"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
+        "[python]": {
+          "editor.formatOnSave": true,
+          "editor.defaultFormatter": "ms-python.black-formatter"
+        },
+        "C_Cpp.default.compilerPath": "/usr/bin/g++",
+        "rust-analyzer.checkOnSave.command": "clippy"
+      }
+    }
+  },
+
+  "forwardPorts": [],
+
+  "postCreateCommand": "git config --global --add safe.directory /workspace && mkdir -p docs features/steps .claude && echo 'Dev Container ready! Run: claude'",
+
+  "remoteUser": "root"
+}

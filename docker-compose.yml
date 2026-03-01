@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/workspace:cached
+      - /var/run/docker.sock:/var/run/docker.sock
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: sleep infinity
+
+  # プロジェクト固有のテスト・検証サービスはここに追加
+  # 例:
+  # test:
+  #   build: .
+  #   volumes:
+  #     - .:/workspace
+  #   working_dir: /workspace
+  #   command: python -m pytest tests/ -v
