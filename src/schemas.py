@@ -11,8 +11,8 @@ from datetime import datetime, date
 from typing import Literal
 from pydantic import BaseModel, Field
 
-
 # ---------- WorkLog スキーマ ----------
+
 
 class WorkLogCreate(BaseModel):
     """作業ログ作成リクエスト."""

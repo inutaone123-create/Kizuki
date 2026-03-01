@@ -42,7 +42,9 @@ def list_logs(issue_id: int, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/api/issues/{issue_id}/logs", response_model=WorkLogResponse, status_code=201)
+@router.post(
+    "/api/issues/{issue_id}/logs", response_model=WorkLogResponse, status_code=201
+)
 def create_log(issue_id: int, body: WorkLogCreate, db: Session = Depends(get_db)):
     """イシューに作業ログを追加する.
 
