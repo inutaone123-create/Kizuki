@@ -167,6 +167,7 @@ DELETE /api/logs/{log_id}       -- メモ削除
 - [ ] フィルター機能の動作確認（優先度・カテゴリ）
 - [ ] エラーハンドリング（存在しないIDへのアクセスなど）
 - [ ] `/project:review-code` でコードレビュー実施
+- [ ] `/project:qiita` を実行して `docs/qiita_draft.md` を生成
 
 **完了条件:** `pytest` がすべてPASS、READMEの手順で誰でも起動できる
 
