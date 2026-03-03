@@ -1,3 +1,5 @@
+<!-- 公開URL: https://qiita.com/inuta-one/items/5639187fea87fa620c16 -->
+<!-- 続編: https://qiita.com/inuta-one/items/c0ee88be2066a366c49b -->
 ---
 title: 【FastAPI + SQLite + Vanilla JSで作る個人用カンバンツール「Kizuki（気づき）」】
 tags:

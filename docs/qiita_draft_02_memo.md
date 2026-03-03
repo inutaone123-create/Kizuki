@@ -1,3 +1,4 @@
+<!-- 公開URL: https://qiita.com/inuta-one/items/c0ee88be2066a366c49b -->
 ---
 title: 【Kizuki 機能追加】「メモを先に書いてあとからタスクに紐付ける」を FastAPI + SQLite で実現した
 tags:
@@ -14,7 +15,7 @@ published: false
 
 ## はじめに
 
-以前の記事（<!-- TODO: 第1弾の記事URLを記入 -->）で、個人用カンバンツール **Kizuki（気づき）** を FastAPI + SQLite + Vanilla JS で作りました。
+以前の記事（https://qiita.com/inuta-one/items/5639187fea87fa620c16）で、個人用カンバンツール **Kizuki（気づき）** を FastAPI + SQLite + Vanilla JS で作りました。
 
 今回は「メモを先に書いて、あとからタスクに紐付けたい」という要望に応えて、**独立メモ機能**を追加しました。
 
@@ -188,4 +189,4 @@ tests/test_memos.py::test_delete_issue_sets_memo_issue_id_null  PASSED
 
 - [SQLAlchemy — Working with ORM Related Objects](https://docs.sqlalchemy.org/en/20/orm/relationships.html)
 - [SQLite — Foreign Key Support](https://www.sqlite.org/foreignkeys.html)
-- 前回の記事: <!-- TODO: 第1弾の記事URLを記入 -->
+- 前回の記事: https://qiita.com/inuta-one/items/5639187fea87fa620c16
