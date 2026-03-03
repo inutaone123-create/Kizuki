@@ -34,24 +34,28 @@ class Issue(Base):
     )
 
     logs: Mapped[list["WorkLog"]] = relationship(
-        "WorkLog", back_populates="issue", cascade="all, delete-orphan"
+        "WorkLog",
+        back_populates="issue",
+        cascade="save-update, merge",
+        passive_deletes=True,
     )
 
 
 class WorkLog(Base):
     """作業メモモデル.
 
-    イシューに紐づく日付付きの作業ログ（Markdown形式）を表す。
+    イシューに紐づく（または独立した）日付付きの作業ログ（Markdown形式）を表す。
+    issue_id は nullable であり、タスクに紐付けない独立メモとしても使用できる。
     """
 
     __tablename__ = "work_logs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    issue_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("issues.id"), nullable=False
+    issue_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("issues.id", ondelete="SET NULL"), nullable=True
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
     logged_at: Mapped[date] = mapped_column(Date, default=date.today)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    issue: Mapped["Issue"] = relationship("Issue", back_populates="logs")
+    issue: Mapped["Issue | None"] = relationship("Issue", back_populates="logs")

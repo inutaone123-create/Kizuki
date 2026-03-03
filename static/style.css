@@ -509,6 +509,160 @@ body {
 }
 #toast.show { transform: translateX(-50%) translateY(0); }
 
+/* ── Tab bar ── */
+.tab-bar {
+  background: var(--surface);
+  border-bottom: 2px solid var(--border);
+  padding: 0 24px;
+  display: flex;
+  gap: 0;
+}
+
+.tab-btn {
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab-btn:hover {
+  color: var(--text);
+}
+
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 700;
+}
+
+/* ── Tab content ── */
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+#tab-board.active {
+  display: grid;
+}
+
+/* ── Memo screen ── */
+.memo-screen {
+  padding: 20px 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.memo-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.memo-count {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.memo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.memo-date-header {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 12px 0 4px;
+  border-bottom: 1px solid var(--border);
+  margin-top: 8px;
+}
+
+.memo-date-header:first-child {
+  margin-top: 0;
+}
+
+.memo-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  transition: box-shadow 0.15s;
+}
+
+.memo-card:hover {
+  box-shadow: var(--shadow);
+}
+
+.memo-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.memo-content {
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+/* Markdown content styles (shared with log-content) */
+.memo-content h1, .memo-content h2, .memo-content h3 {
+  margin: 8px 0 4px;
+  font-size: 0.9rem;
+}
+.memo-content ul, .memo-content ol {
+  margin: 4px 0 4px 18px;
+}
+.memo-content code {
+  background: #e9ecef;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.82rem;
+}
+.memo-content pre {
+  background: #e9ecef;
+  padding: 8px 10px;
+  border-radius: 5px;
+  overflow-x: auto;
+  margin: 6px 0;
+}
+.memo-content p {
+  margin: 4px 0;
+}
+
+.memo-issue-link {
+  font-size: 0.78rem;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.memo-no-issue {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.memo-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .board {
@@ -520,5 +674,11 @@ body {
   }
   .app-header {
     padding: 10px 12px;
+  }
+  .memo-screen {
+    padding: 12px;
+  }
+  .tab-bar {
+    padding: 0 12px;
   }
 }

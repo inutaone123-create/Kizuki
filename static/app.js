@@ -12,8 +12,11 @@
 // ─── State ───────────────────────────────────────────────────────────────────
 const state = {
   issues: [],
+  memos: [],
   currentIssue: null,
+  currentMemo: null,
   filters: { status: "", priority: "", category: "" },
+  activeTab: "board",
 };
 
 // ─── API helpers ─────────────────────────────────────────────────────────────
@@ -50,6 +53,13 @@ const api = {
     create: (issueId, body)  => apiFetch(`/api/issues/${issueId}/logs`, { method: "POST", body: JSON.stringify(body) }),
     delete: (logId)          => apiFetch(`/api/logs/${logId}`, { method: "DELETE" }),
   },
+  memos: {
+    list:        ()            => apiFetch("/api/memos"),
+    create:      (body)        => apiFetch("/api/memos", { method: "POST", body: JSON.stringify(body) }),
+    update:      (id, body)    => apiFetch(`/api/memos/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+    delete:      (id)          => apiFetch(`/api/memos/${id}`, { method: "DELETE" }),
+    patchIssue:  (id, issueId) => apiFetch(`/api/memos/${id}/issue`, { method: "PATCH", body: JSON.stringify({ issue_id: issueId }) }),
+  },
 };
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
@@ -60,6 +70,40 @@ function showToast(msg) {
   t.classList.add("show");
   setTimeout(() => t.classList.remove("show"), 2500);
 }
+
+// ─── Tab switching ────────────────────────────────────────────────────────────
+
+function switchTab(tabName) {
+  state.activeTab = tabName;
+
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.tab === tabName);
+  });
+  document.querySelectorAll(".tab-content").forEach(el => {
+    el.classList.toggle("active", el.id === `tab-${tabName}`);
+  });
+
+  const filterBar = document.getElementById("board-filter-bar");
+  const newIssueBtn = document.getElementById("btn-new-issue");
+  if (tabName === "board") {
+    filterBar.style.display = "";
+    newIssueBtn.style.display = "";
+  } else {
+    filterBar.style.display = "none";
+    newIssueBtn.style.display = "none";
+  }
+
+  if (tabName === "memo") {
+    loadMemos();
+  }
+
+  // URL ハッシュ保持
+  location.hash = tabName;
+}
+
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+});
 
 // ─── Board rendering ─────────────────────────────────────────────────────────
 
@@ -147,9 +191,18 @@ async function loadIssues() {
   try {
     state.issues = await api.issues.list(state.filters);
     renderBoard();
+    updateCategoryFilter();
   } catch (e) {
     showToast(`イシューの取得に失敗: ${e.message}`);
   }
+}
+
+function updateCategoryFilter() {
+  const sel = document.getElementById("filter-category");
+  const current = sel.value;
+  const cats = [...new Set(state.issues.map(i => i.category).filter(Boolean))].sort();
+  sel.innerHTML = `<option value="">すべてのカテゴリ</option>` +
+    cats.map(c => `<option value="${escHtml(c)}"${c === current ? " selected" : ""}>${escHtml(c)}</option>`).join("");
 }
 
 // ─── Create / Edit modal ─────────────────────────────────────────────────────
@@ -317,6 +370,131 @@ document.getElementById("btn-delete-issue").addEventListener("click", async () =
   });
 });
 
+// ─── Memo screen ─────────────────────────────────────────────────────────────
+
+async function loadMemos() {
+  try {
+    state.memos = await api.memos.list();
+    renderMemos();
+  } catch (e) {
+    showToast(`メモの取得に失敗: ${e.message}`);
+  }
+}
+
+function renderMemos() {
+  const container = document.getElementById("memo-list");
+  const countEl = document.getElementById("memo-count");
+  container.innerHTML = "";
+  countEl.textContent = `${state.memos.length} 件`;
+
+  if (state.memos.length === 0) {
+    container.innerHTML = `<div class="empty-col">メモがありません</div>`;
+    return;
+  }
+
+  // 日付ごとにグループ化
+  const groups = {};
+  state.memos.forEach(memo => {
+    const d = memo.logged_at;
+    if (!groups[d]) groups[d] = [];
+    groups[d].push(memo);
+  });
+
+  Object.keys(groups).sort((a, b) => b.localeCompare(a)).forEach(date => {
+    const dateHeader = document.createElement("div");
+    dateHeader.className = "memo-date-header";
+    dateHeader.textContent = date;
+    container.appendChild(dateHeader);
+
+    groups[date].forEach(memo => {
+      const card = document.createElement("div");
+      card.className = "memo-card";
+      card.innerHTML = `
+        <div class="memo-card-body">
+          <div class="memo-content">${marked.parse(memo.content)}</div>
+          ${memo.issue_title
+            ? `<div class="memo-issue-link">🔗 ${escHtml(memo.issue_title)}</div>`
+            : `<div class="memo-issue-link memo-no-issue">タスク未紐付け</div>`}
+        </div>
+        <div class="memo-card-actions">
+          <button class="btn btn-ghost btn-sm" onclick="openEditMemoModal(${memo.id})">✏️ 編集</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteMemo(${memo.id})">🗑️ 削除</button>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  });
+}
+
+function openCreateMemoModal() {
+  document.getElementById("memo-form").reset();
+  document.getElementById("memo-id").value = "";
+  document.getElementById("m-date").value = new Date().toISOString().slice(0, 10);
+  document.getElementById("modal-memo-title-text").textContent = "新規メモ";
+  state.currentMemo = null;
+  populateMemoIssueSelect(null);
+  openModal("modal-memo");
+}
+
+async function openEditMemoModal(memoId) {
+  const memo = state.memos.find(m => m.id === memoId);
+  if (!memo) return;
+  state.currentMemo = memo;
+  document.getElementById("memo-id").value = memo.id;
+  document.getElementById("m-date").value = memo.logged_at;
+  document.getElementById("m-content").value = memo.content;
+  document.getElementById("modal-memo-title-text").textContent = "メモ編集";
+  populateMemoIssueSelect(memo.issue_id);
+  openModal("modal-memo");
+}
+
+function populateMemoIssueSelect(selectedIssueId) {
+  const sel = document.getElementById("m-issue");
+  sel.innerHTML = `<option value="">なし</option>` +
+    state.issues.map(issue =>
+      `<option value="${issue.id}"${issue.id === selectedIssueId ? " selected" : ""}>${escHtml(issue.title)}</option>`
+    ).join("");
+}
+
+document.getElementById("memo-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("memo-id").value;
+  const issueIdVal = document.getElementById("m-issue").value;
+  const body = {
+    content:    document.getElementById("m-content").value.trim(),
+    logged_at:  document.getElementById("m-date").value,
+    issue_id:   issueIdVal ? Number(issueIdVal) : null,
+  };
+  if (!body.content) return;
+
+  try {
+    if (id) {
+      await api.memos.update(Number(id), body);
+      showToast("メモを更新しました");
+    } else {
+      await api.memos.create(body);
+      showToast("メモを作成しました");
+    }
+    closeModal("modal-memo");
+    await loadMemos();
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
+});
+
+async function deleteMemo(memoId) {
+  if (!confirm("このメモを削除しますか？")) return;
+  try {
+    await api.memos.delete(memoId);
+    showToast("メモを削除しました");
+    await loadMemos();
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
+}
+
+document.getElementById("btn-new-memo").addEventListener("click", openCreateMemoModal);
+
 // ─── Modal helpers ───────────────────────────────────────────────────────────
 
 function openModal(id) {
@@ -358,6 +536,10 @@ document.getElementById("log-date").value = new Date().toISOString().slice(0, 10
 
 // 新規ボタン
 document.getElementById("btn-new-issue").addEventListener("click", openCreateModal);
+
+// URL ハッシュからタブ復元
+const initialTab = location.hash.replace("#", "") || "board";
+switchTab(["board", "memo"].includes(initialTab) ? initialTab : "board");
 
 // 初期読み込み
 loadIssues();

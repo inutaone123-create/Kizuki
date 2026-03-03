@@ -7,7 +7,7 @@ This implementation: 2026
 License: MIT
 """
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 DATABASE_URL = "sqlite:///./data/issuelog.db"
@@ -16,6 +16,18 @@ engine = create_engine(
     DATABASE_URL,
     connect_args={"check_same_thread": False},
 )
+
+
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_conn, connection_record):
+    """SQLite 接続時に外部キー制約を有効化する.
+
+    SQLite は PRAGMA foreign_keys = ON を明示的に設定しないと
+    外部キー制約（ON DELETE SET NULL 等）が機能しない。
+    """
+    cursor = dbapi_conn.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

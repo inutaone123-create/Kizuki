@@ -26,8 +26,14 @@
   </div>
 </header>
 
+<!-- ── Tab bar ───────────────────────────────────────────────────── -->
+<nav class="tab-bar">
+  <button class="tab-btn active" data-tab="board">🏯 カンバン</button>
+  <button class="tab-btn" data-tab="memo">📝 メモ</button>
+</nav>
+
 <!-- ── Filter bar ────────────────────────────────────────────────── -->
-<div class="filter-bar">
+<div class="filter-bar" id="board-filter-bar">
   <label>フィルター:</label>
   <select id="filter-status">
     <option value="">すべてのステータス</option>
@@ -47,7 +53,7 @@
 </div>
 
 <!-- ── Kanban board ──────────────────────────────────────────────── -->
-<main class="board">
+<main class="board tab-content active" id="tab-board">
   <!-- 未着手 -->
   <div class="column">
     <div class="column-header todo">
@@ -76,7 +82,16 @@
   </div>
 </main>
 
-<!-- ── Modal: 新規/編集 ─────────────────────────────────────────── -->
+<!-- ── Memo screen ───────────────────────────────────────────────── -->
+<div class="memo-screen tab-content" id="tab-memo">
+  <div class="memo-toolbar">
+    <span class="memo-count" id="memo-count">0 件</span>
+    <button id="btn-new-memo" class="btn btn-primary btn-sm">＋ 新規メモ</button>
+  </div>
+  <div id="memo-list" class="memo-list"></div>
+</div>
+
+<!-- ── Modal: 新規/編集イシュー ──────────────────────────────────── -->
 <div id="modal-issue" class="modal-overlay" style="display:none">
   <div class="modal">
     <div class="modal-header">
@@ -180,6 +195,44 @@
         <!-- ログ一覧 -->
         <div id="log-list" class="log-list"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: メモ作成/編集 ─────────────────────────────────────── -->
+<div id="modal-memo" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-memo-title-text">新規メモ</h2>
+      <button class="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="memo-form">
+        <input type="hidden" id="memo-id">
+
+        <div class="form-group">
+          <label for="m-date">日付</label>
+          <input type="date" id="m-date" required>
+        </div>
+
+        <div class="form-group">
+          <label for="m-content">内容（Markdown対応）</label>
+          <textarea id="m-content" rows="8"
+            placeholder="## メモ内容&#10;- 気づいたこと&#10;- あとでタスクに紐付けたいこと"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="m-issue">タスク紐付け（任意）</label>
+          <select id="m-issue">
+            <option value="">なし</option>
+          </select>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost modal-close">キャンセル</button>
+          <button type="submit" class="btn btn-primary">保存</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
