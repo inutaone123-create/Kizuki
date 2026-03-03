@@ -134,9 +134,63 @@ MIT License
 
 ---
 
+---
+
+## 追加実装: 独立メモ画面 + タスク紐付け機能（2026-03-03）
+
+### 概要
+
+WorkLog モデルの `issue_id` を nullable 化し、タスクに依存しない独立メモとして機能拡張。
+「メモを先に書いて後からタスクに紐付ける」ワークフローを実現した。
+
+### 変更内容
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `src/database.py` | `PRAGMA foreign_keys=ON` を有効化（ON DELETE SET NULL サポート） |
+| `src/models.py` | WorkLog.issue_id を nullable=True + ondelete=SET NULL に変更 |
+| `src/schemas.py` | MemoCreate / MemoUpdate / MemoIssueUpdate / MemoResponse 追加 |
+| `src/routers/memos.py` | 新規メモルーター（5エンドポイント）作成 |
+| `src/main.py` | memos ルーターを登録 |
+| `static/index.html` | タブ切り替えUI・メモ画面・メモモーダル追加 |
+| `static/app.js` | タブ・メモ画面ロジック追加 |
+| `static/style.css` | タブバー・メモ画面スタイル追加 |
+| `scripts/migrate_memo.py` | SQLite マイグレーションスクリプト追加 |
+| `tests/conftest.py` | テスト用エンジンにも PRAGMA foreign_keys=ON 追加 |
+| `tests/test_memos.py` | メモAPIテスト 11ケース追加 |
+
+### 追加 API エンドポイント
+
+| メソッド | パス | 説明 |
+|---------|------|------|
+| GET | `/api/memos` | 全メモ一覧（logged_at 降順） |
+| POST | `/api/memos` | 新規メモ作成（issue_id 任意） |
+| PUT | `/api/memos/{id}` | メモ更新（内容・日付・紐付け変更） |
+| DELETE | `/api/memos/{id}` | メモ削除 |
+| PATCH | `/api/memos/{id}/issue` | タスク紐付けのみ変更（null で解除） |
+
+### テスト結果
+
+```
+25 passed in 0.59s
+```
+
+### 技術的知見
+
+- SQLite の `ON DELETE SET NULL` は `PRAGMA foreign_keys=ON` が必要
+  - アプリケーション側: `@event.listens_for(engine, "connect")` で設定
+  - テスト側: test_engine にも同じイベントリスナーを追加
+- `cascade="all, delete-orphan"` は SQLAlchemy ORM レベルで動作するが、
+  DB レベルの `ON DELETE SET NULL` には PRAGMA 設定が必須
+
+---
+
 ## コミット履歴
 
 ```
-bc84913 feat: Kizukiアプリ全フェーズ実装（Phase 0〜5）
-61937fb Initial commit
+7d998f4 feat: 独立メモ画面とタスク紐付け機能を追加
+2e195ac style: black による自動整形を適用
+420c920 docs: Sphinx APIドキュメントを生成（Python）
+4644bd8 docs: ドキュメント生成を使用言語のみに限定
+37729c5 docs: Qiita記事ドラフト追加・Qiita生成を必須化
 ```
