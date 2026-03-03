@@ -355,6 +355,10 @@ tests/test_memos.py::test_delete_issue_sets_memo_issue_id_null  PASSED
 - `@app.on_event("startup")` は非推奨 → **`lifespan` コンテキストマネージャー**を使うべし
 - 今後の拡張候補：ユーザー認証、期日・カレンダー表示、PostgreSQL移行、Reactフロントエンド化
 
+## ソースコード
+
+https://github.com/inutaone123-create/Kizuki
+
 ## 参考
 
 - [FastAPI 公式ドキュメント](https://fastapi.tiangolo.com/)

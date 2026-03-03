@@ -185,6 +185,10 @@ tests/test_memos.py::test_delete_issue_sets_memo_issue_id_null  PASSED
 - SQLite の **`ALTER COLUMN` 非対応**はテーブル再作成スクリプトで対応できる
 - cascade から **`delete-orphan` を外す**ことで、タスク削除後もメモを残せる
 
+## ソースコード
+
+https://github.com/inutaone123-create/Kizuki
+
 ## 参考
 
 - [SQLAlchemy — Working with ORM Related Objects](https://docs.sqlalchemy.org/en/20/orm/relationships.html)
