@@ -168,13 +168,14 @@ main ← マージ → push
    - C++/C# → Doxygen（`docs/doxygen/html/index.html`）
    - Python  → Sphinx（`docs/sphinx/_build/html/index.html`）
    - Rust    → cargo doc（`target/doc/<crate>/index.html`）
-8. **ドキュメント更新** — 仕様変更・新機能追加時は docs/, COMPLETION_REPORT を更新
+8. **ドキュメント更新** — 仕様変更・新機能追加時は **README.md**（特徴・APIエンドポイント・ファイル構成）, docs/, COMPLETION_REPORT を更新
 9. **Qiita記事ドラフト** — `/project:qiita` を実行してドラフトを生成。以下の方針で**モードを選択**すること：
    - **初回 or 記事がまだない場合** → `docs/qiita_draft.md` に新規作成（全体構成から書く）
    - **機能追加・仕様変更の場合** → `docs/qiita_draft_<連番または機能名>.md` に**別記事**として作成
      - 冒頭で前の記事をリンクする
      - 「設計の判断」「ハマりどころ」を中心に書く（前記事との差分が主役）
      - 既存の `docs/qiita_draft.md` は**上書きしない**
+   - **連番の確認**: `ls docs/qiita_draft_*.md` で既存ファイルを確認してから次の番号を決める
 10. **コミット＆プッシュ** — 作業ブランチでコミット → main にマージ → push
 
 ## Qiita記事方針
@@ -233,16 +234,10 @@ https://github.com/inutaone123-create/Kizuki
 ## 技術的知見
 
 <!-- プロジェクト進行中に発見した言語別・ライブラリ別のハマりどころを記録する -->
-<!-- 例: -->
-<!-- ### Python -->
-<!-- - `np.fft.fft` の正規化は Forward=なし、Inverse=1/N -->
-<!-- - `scipy.signal.butter` の `fs` 引数は Hz 単位（省略するとサンプリング周波数 1.0 扱い） -->
-<!-- ### C++ -->
-<!-- - Eigen の FFT は `Eigen::FFT<float>` ではなく `Eigen::FFT<double>` を使う -->
-<!-- - CMake で Eigen をリンクする場合は `target_link_libraries(target Eigen3::Eigen)` -->
 
-### {{LANG_1}}
--
-
-### {{LANG_2}}
--
+### Python / FastAPI
+- `async def` エンドポイント × 同期 SQLAlchemy `Session` は問題なく共存できる（httpx の await だけが非同期）
+- SQLAlchemy の `Base.metadata.create_all()` でモデル追加時は新規起動で自動テーブル作成（新規 DB はマイグレーション不要）
+- Pydantic で秘密情報を返したくない場合、フィールドを除外して `has_xxx: bool` で代替するパターンが有効
+- 月末計算で `target.replace(month=target.month + 1)` は 12月に `ValueError` — 12月だけ年またぎの条件分岐が必要
+- `httpx` は FastAPI プロジェクトの requirements に既に含まれていることが多い（追加不要）
