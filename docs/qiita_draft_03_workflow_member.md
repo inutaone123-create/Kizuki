@@ -1,3 +1,4 @@
+<!-- 公開URL: https://qiita.com/inuta-one/items/559b22ff5daca1763711 -->
 ---
 title: 【Kizuki 機能追加】認証なしで使える「担当者アサイン」と「カスタムワークフロー」をFastAPI + Vanilla JSで実装した
 tags:
