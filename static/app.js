@@ -897,7 +897,12 @@ function openModal(id) {
 function closeModal(id) {
   const overlay = document.getElementById(id);
   overlay.classList.remove("active");
-  overlay.addEventListener("transitionend", () => { overlay.style.display = "none"; }, { once: true });
+  overlay.addEventListener("transitionend", () => {
+    overlay.style.display = "none";
+    if (id === "modal-detail" && state.activeTab === "workflow") {
+      renderWorkflowMatrix();
+    }
+  }, { once: true });
 }
 
 document.querySelectorAll(".modal-overlay").forEach(overlay => {
