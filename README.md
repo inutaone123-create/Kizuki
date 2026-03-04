@@ -10,6 +10,10 @@
 - **作業ログ**: Markdown形式のメモをイシューに日付付きで記録
 - **独立メモ**: タスク未紐付けのメモを先に書いて、後からタスクに関連付け可能
 - **フィルター**: ステータス・優先度・カテゴリで絞り込み
+- **担当者アサイン**: メンバーを登録してイシューに担当者を設定（認証なし・名前ベース）
+- **カスタムワークフロー**: 任意のステップ（例: 申請→承認→実行→完了）を定義してイシューに適用
+- **ワークフロー横断ビュー**: 🔄 タブでワークフロー × ステップのカンバンを一覧表示
+- **レポート生成**: 📊 タブで日報・週報・月報を自動生成（AI連携 or テンプレートフォールバック）
 
 ## 技術スタック
 
@@ -43,6 +47,8 @@ pip3 install -r requirements.txt
 
 # DBマイグレーション（既存DBがある場合）
 python3 scripts/migrate_memo.py
+python3 scripts/migrate_workflow_member.py
+python3 scripts/migrate_reports.py
 
 # サンプルデータの投入（任意）
 python3 scripts/seed.py
@@ -98,6 +104,7 @@ uvicorn src.main:app --reload
 | PUT | `/api/issues/{id}` | 更新 |
 | DELETE | `/api/issues/{id}` | 削除 |
 | PATCH | `/api/issues/{id}/status` | ステータスのみ更新 |
+| PATCH | `/api/issues/{id}/workflow-step` | ワークフローステップ更新 |
 
 ### 作業ログ（イシュー紐付き）
 
@@ -117,6 +124,40 @@ uvicorn src.main:app --reload
 | DELETE | `/api/memos/{id}` | メモ削除 |
 | PATCH | `/api/memos/{id}/issue` | タスク紐付け変更（null で解除） |
 
+### メンバー
+
+| メソッド | パス | 説明 |
+|---------|------|------|
+| GET | `/api/members` | メンバー一覧 |
+| POST | `/api/members` | メンバー追加 |
+| PUT | `/api/members/{id}` | メンバー更新 |
+| DELETE | `/api/members/{id}` | メンバー削除 |
+
+### ワークフロー
+
+| メソッド | パス | 説明 |
+|---------|------|------|
+| GET | `/api/workflows` | ワークフロー一覧 |
+| POST | `/api/workflows` | ワークフロー作成 |
+| PUT | `/api/workflows/{id}` | ワークフロー更新 |
+| DELETE | `/api/workflows/{id}` | ワークフロー削除 |
+
+### レポート
+
+| メソッド | パス | 説明 |
+|---------|------|------|
+| GET | `/api/reports` | レポート一覧（content なし） |
+| POST | `/api/reports/generate` | レポート生成（日報/週報/月報） |
+| GET | `/api/reports/{id}` | レポート詳細（content あり） |
+| DELETE | `/api/reports/{id}` | レポート削除 |
+
+### AI設定
+
+| メソッド | パス | 説明 |
+|---------|------|------|
+| GET | `/api/settings/ai` | AI設定取得（api_key は返さない） |
+| PUT | `/api/settings/ai` | AI設定保存（upsert） |
+
 ## テストの実行
 
 ```bash
@@ -130,25 +171,38 @@ kizuki/
 ├── src/
 │   ├── main.py          # FastAPIエントリーポイント
 │   ├── database.py      # DB設定・初期化
-│   ├── models.py        # SQLAlchemyモデル（Issue, WorkLog）
+│   ├── models.py        # SQLAlchemyモデル
 │   ├── schemas.py       # Pydanticスキーマ
-│   └── routers/
-│       ├── issues.py    # イシューCRUDルーター
-│       ├── logs.py      # 作業ログCRUDルーター
-│       └── memos.py     # 独立メモCRUDルーター
+│   ├── routers/
+│   │   ├── issues.py    # イシューCRUD
+│   │   ├── logs.py      # 作業ログCRUD
+│   │   ├── memos.py     # 独立メモCRUD
+│   │   ├── members.py   # メンバーCRUD
+│   │   ├── workflows.py # ワークフローCRUD
+│   │   ├── reports.py   # レポートCRUD + 生成
+│   │   └── settings.py  # AI設定
+│   └── services/
+│       └── ai_service.py  # AI API クライアント + レポート生成ロジック
 ├── static/
-│   ├── index.html       # カンバン・メモUI
+│   ├── index.html       # UI（カンバン・メモ・ワークフロー・レポート）
 │   ├── style.css        # スタイル
 │   └── app.js           # フロントエンドロジック
 ├── tests/
-│   ├── conftest.py      # テスト設定（インメモリDB）
-│   ├── test_issues.py   # イシューAPIテスト
-│   ├── test_logs.py     # 作業ログAPIテスト
-│   └── test_memos.py    # 独立メモAPIテスト
+│   ├── conftest.py           # テスト設定（インメモリDB）
+│   ├── test_issues.py        # イシューAPIテスト
+│   ├── test_logs.py          # 作業ログAPIテスト
+│   ├── test_memos.py         # 独立メモAPIテスト
+│   ├── test_members.py       # メンバーAPIテスト
+│   ├── test_workflows.py     # ワークフローAPIテスト
+│   └── test_reports.py       # レポート・AI設定APIテスト
 ├── scripts/
-│   ├── seed.py          # サンプルデータ投入
-│   └── migrate_memo.py  # DBマイグレーション（issue_id nullable化）
-├── data/                # SQLiteファイル置き場
+│   ├── seed.py                    # サンプルデータ投入
+│   ├── migrate_memo.py            # マイグレーション（issue_id nullable化）
+│   ├── migrate_workflow_member.py # マイグレーション（メンバー・ワークフロー）
+│   └── migrate_reports.py         # マイグレーション（AI設定・レポート）
+├── docs/
+│   └── ai_setup.md    # AI設定ガイド（Groq/Ollama/OpenRouter etc.）
+├── data/              # SQLiteファイル置き場
 └── requirements.txt
 ```
 
