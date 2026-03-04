@@ -112,6 +112,7 @@ function switchTab(tabName) {
 
   if (tabName === "memo") loadMemos();
   if (tabName === "settings") loadSettings();
+  if (tabName === "workflow") loadWorkflowMatrix();
 
   location.hash = tabName;
 }
@@ -625,6 +626,89 @@ async function deleteMemo(memoId) {
 
 document.getElementById("btn-new-memo").addEventListener("click", openCreateMemoModal);
 
+// ─── Workflow matrix screen ───────────────────────────────────────────────────
+
+async function loadWorkflowMatrix() {
+  try {
+    [state.members, state.workflows, state.issues] = await Promise.all([
+      api.members.list(),
+      api.workflows.list(),
+      api.issues.list(),
+    ]);
+  } catch (e) {
+    showToast(`データの取得に失敗: ${e.message}`);
+    return;
+  }
+  renderWorkflowMatrix();
+}
+
+function renderWorkflowMatrix() {
+  const container = document.getElementById("workflow-matrix-body");
+  container.innerHTML = "";
+
+  // ワークフローIDごと・ステップインデックスごとにグループ化
+  const grouped = {};
+  state.issues
+    .filter(i => i.workflow_id != null)
+    .forEach(issue => {
+      const wfId = issue.workflow_id;
+      const step = issue.workflow_step ?? 0;
+      if (!grouped[wfId]) grouped[wfId] = {};
+      if (!grouped[wfId][step]) grouped[wfId][step] = [];
+      grouped[wfId][step].push(issue);
+    });
+
+  // ワークフローが割り当てられたイシューが1件もなければメッセージ表示
+  if (Object.keys(grouped).length === 0) {
+    container.innerHTML = `<div class="empty-col">ワークフローに割り当てられたイシューがありません</div>`;
+    return;
+  }
+
+  state.workflows.forEach(wf => {
+    if (!grouped[wf.id]) return; // イシューが0件のワークフローは表示しない
+
+    const section = document.createElement("div");
+    section.className = "wf-matrix-section";
+
+    const header = document.createElement("div");
+    header.className = "wf-matrix-section-header";
+    header.innerHTML = `<h2>【${escHtml(wf.name)}】</h2>`;
+    section.appendChild(header);
+
+    const board = document.createElement("div");
+    board.className = "wf-matrix-board";
+    board.style.gridTemplateColumns = `repeat(${wf.steps.length}, 220px)`;
+
+    wf.steps.forEach((stepName, stepIdx) => {
+      const col = document.createElement("div");
+      col.className = "wf-matrix-column";
+
+      const issues = (grouped[wf.id] && grouped[wf.id][stepIdx]) || [];
+      const colHeader = document.createElement("div");
+      colHeader.className = "wf-matrix-col-header";
+      colHeader.innerHTML = `
+        <span class="wf-matrix-col-name">${escHtml(stepName)}</span>
+        <span class="wf-matrix-col-count">${issues.length}</span>
+      `;
+      col.appendChild(colHeader);
+
+      const body = document.createElement("div");
+      body.className = "wf-matrix-col-body";
+
+      if (issues.length === 0) {
+        body.innerHTML = `<div class="empty-col">なし</div>`;
+      } else {
+        issues.forEach(issue => body.appendChild(buildCard(issue)));
+      }
+      col.appendChild(body);
+      board.appendChild(col);
+    });
+
+    section.appendChild(board);
+    container.appendChild(section);
+  });
+}
+
 // ─── Settings screen ──────────────────────────────────────────────────────────
 
 async function loadSettings() {
@@ -843,7 +927,7 @@ document.getElementById("btn-new-issue").addEventListener("click", openCreateMod
 
 // URL ハッシュからタブ復元
 const initialTab = location.hash.replace("#", "") || "board";
-switchTab(["board", "memo", "settings"].includes(initialTab) ? initialTab : "board");
+switchTab(["board", "memo", "workflow", "settings"].includes(initialTab) ? initialTab : "board");
 
 // 初期読み込み
 loadMembersAndWorkflows().then(() => loadIssues());
