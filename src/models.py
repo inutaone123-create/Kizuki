@@ -109,3 +109,38 @@ class WorkLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     issue: Mapped["Issue | None"] = relationship("Issue", back_populates="logs")
+
+
+class AISettings(Base):
+    """AI設定モデル.
+
+    OpenAI互換APIの接続情報を保存する（id=1固定の単一レコード）。
+    """
+
+    __tablename__ = "ai_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    base_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    model: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
+class Report(Base):
+    """レポートモデル.
+
+    日報・週報・月報を保存する。content は Markdown 形式。
+    """
+
+    __tablename__ = "reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    report_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    period_start: Mapped[date] = mapped_column(Date, nullable=False)
+    period_end: Mapped[date] = mapped_column(Date, nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    is_ai_generated: Mapped[bool] = mapped_column(Integer, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

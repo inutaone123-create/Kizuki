@@ -15,6 +15,9 @@ const state = {
   memos: [],
   members: [],
   workflows: [],
+  reports: [],
+  aiSettings: null,
+  reportType: "daily",
   currentIssue: null,
   currentMemo: null,
   currentMember: null,
@@ -77,6 +80,16 @@ const api = {
     update: (id, body)    => apiFetch(`/api/workflows/${id}`, { method: "PUT", body: JSON.stringify(body) }),
     delete: (id)          => apiFetch(`/api/workflows/${id}`, { method: "DELETE" }),
   },
+  reports: {
+    list:     ()           => apiFetch("/api/reports"),
+    generate: (body)       => apiFetch("/api/reports/generate", { method: "POST", body: JSON.stringify(body) }),
+    get:      (id)         => apiFetch(`/api/reports/${id}`),
+    delete:   (id)         => apiFetch(`/api/reports/${id}`, { method: "DELETE" }),
+  },
+  aiSettings: {
+    get:    ()     => apiFetch("/api/settings/ai"),
+    update: (body) => apiFetch("/api/settings/ai", { method: "PUT", body: JSON.stringify(body) }),
+  },
 };
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
@@ -113,6 +126,7 @@ function switchTab(tabName) {
   if (tabName === "memo") loadMemos();
   if (tabName === "settings") loadSettings();
   if (tabName === "workflow") loadWorkflowMatrix();
+  if (tabName === "report") loadReports();
 
   location.hash = tabName;
 }
@@ -715,6 +729,7 @@ async function loadSettings() {
   await loadMembersAndWorkflows();
   renderMembers();
   renderWorkflows();
+  await loadAISettings();
 }
 
 // ── Members ──
@@ -925,6 +940,167 @@ function escHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
+// ─── Report screen ────────────────────────────────────────────────────────────
+
+const REPORT_TYPE_LABEL = { daily: "日報", weekly: "週報", monthly: "月報" };
+const REPORT_TYPE_COLOR = { daily: "#4361ee", weekly: "#f77f00", monthly: "#2dc653" };
+
+async function loadReports() {
+  try {
+    state.reports = await api.reports.list();
+  } catch (e) {
+    showToast(`レポート取得に失敗: ${e.message}`);
+    return;
+  }
+  renderReportList();
+}
+
+function renderReportList() {
+  const container = document.getElementById("report-list");
+  if (state.reports.length === 0) {
+    container.innerHTML = `<div class="empty-col">レポートがありません。⚡ 生成ボタンで作成してください。</div>`;
+    return;
+  }
+  container.innerHTML = state.reports.map(r => `
+    <div class="report-item">
+      <div class="report-item-left">
+        <span class="report-type-badge" style="background:${REPORT_TYPE_COLOR[r.report_type]}">${REPORT_TYPE_LABEL[r.report_type]}</span>
+        <span class="report-item-title">${escHtml(r.title)}</span>
+        <span class="${r.is_ai_generated ? "report-ai-badge" : "report-template-badge"}">
+          ${r.is_ai_generated ? "🤖 AI" : "📋 テンプレ"}
+        </span>
+      </div>
+      <div class="report-item-right">
+        <span class="report-item-date">${r.created_at.slice(0, 10)}</span>
+        <button class="btn btn-ghost btn-sm" onclick="openReportDetail(${r.id})">👁 表示</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteReport(${r.id})">🗑️</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function generateReport() {
+  const targetDate = document.getElementById("report-target-date").value;
+  if (!targetDate) {
+    showToast("対象日を選択してください");
+    return;
+  }
+  const generating = document.getElementById("report-generating");
+  generating.style.display = "flex";
+  document.getElementById("btn-generate-report").disabled = true;
+  try {
+    const report = await api.reports.generate({
+      report_type: state.reportType,
+      target_date: targetDate,
+    });
+    state.reports.unshift(report);
+    renderReportList();
+    showToast(`${REPORT_TYPE_LABEL[state.reportType]}を生成しました`);
+  } catch (e) {
+    showToast(`生成に失敗: ${e.message}`);
+  } finally {
+    generating.style.display = "none";
+    document.getElementById("btn-generate-report").disabled = false;
+  }
+}
+
+async function openReportDetail(reportId) {
+  try {
+    const report = await api.reports.get(reportId);
+    document.getElementById("report-modal-title").textContent = report.title;
+    const badge = `<span class="report-type-badge" style="background:${REPORT_TYPE_COLOR[report.report_type]}">${REPORT_TYPE_LABEL[report.report_type]}</span>`;
+    const ai = report.is_ai_generated
+      ? `<span class="report-ai-badge">🤖 AI生成</span>`
+      : `<span class="report-template-badge">📋 テンプレ</span>`;
+    document.getElementById("report-modal-meta").innerHTML =
+      `${badge} ${ai} <span class="report-period">${report.period_start} 〜 ${report.period_end}</span>`;
+    document.getElementById("report-modal-content").innerHTML =
+      typeof marked !== "undefined" ? marked.parse(report.content) : `<pre>${escHtml(report.content)}</pre>`;
+    openModal("modal-report");
+  } catch (e) {
+    showToast(`レポート取得に失敗: ${e.message}`);
+  }
+}
+
+async function deleteReport(reportId) {
+  if (!confirm("このレポートを削除しますか？")) return;
+  try {
+    await api.reports.delete(reportId);
+    state.reports = state.reports.filter(r => r.id !== reportId);
+    renderReportList();
+    showToast("レポートを削除しました");
+  } catch (e) {
+    showToast(`削除に失敗: ${e.message}`);
+  }
+}
+
+// レポートタイプ切り替え
+document.querySelectorAll(".report-type-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    state.reportType = btn.dataset.type;
+    document.querySelectorAll(".report-type-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  });
+});
+
+document.getElementById("btn-generate-report").addEventListener("click", generateReport);
+
+// 日付のデフォルトを今日に設定
+document.getElementById("report-target-date").value = new Date().toISOString().slice(0, 10);
+
+// ─── AI Settings ─────────────────────────────────────────────────────────────
+
+async function loadAISettings() {
+  try {
+    state.aiSettings = await api.aiSettings.get();
+    renderAISettingsSummary();
+  } catch (e) {
+    // 設定取得失敗は無視
+  }
+}
+
+function renderAISettingsSummary() {
+  const container = document.getElementById("ai-settings-info");
+  if (!container) return;
+  const cfg = state.aiSettings;
+  if (!cfg || !cfg.base_url) {
+    container.innerHTML = `<p class="ai-settings-empty">AI設定が未設定です。編集ボタンから設定すると、AI生成モードが有効になります。</p>`;
+    return;
+  }
+  container.innerHTML = `
+    <div class="ai-settings-row"><span class="ai-settings-key">Base URL</span><span class="ai-settings-val">${escHtml(cfg.base_url)}</span></div>
+    <div class="ai-settings-row"><span class="ai-settings-key">Model</span><span class="ai-settings-val">${escHtml(cfg.model || "未設定")}</span></div>
+    <div class="ai-settings-row"><span class="ai-settings-key">API Key</span><span class="ai-settings-val">${cfg.has_api_key ? "設定済み ✅" : "未設定"}</span></div>
+  `;
+}
+
+function openAISettingsModal() {
+  const cfg = state.aiSettings;
+  document.getElementById("ai-base-url").value = cfg?.base_url || "";
+  document.getElementById("ai-api-key").value = "";
+  document.getElementById("ai-model").value = cfg?.model || "";
+  openModal("modal-ai-settings");
+}
+
+document.getElementById("btn-edit-ai-settings").addEventListener("click", openAISettingsModal);
+
+document.getElementById("ai-settings-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const body = {
+    base_url: document.getElementById("ai-base-url").value.trim(),
+    api_key:  document.getElementById("ai-api-key").value,
+    model:    document.getElementById("ai-model").value.trim(),
+  };
+  try {
+    state.aiSettings = await api.aiSettings.update(body);
+    renderAISettingsSummary();
+    closeModal("modal-ai-settings");
+    showToast("AI設定を保存しました");
+  } catch (e) {
+    showToast(`保存に失敗: ${e.message}`);
+  }
+});
+
 // ─── Init ────────────────────────────────────────────────────────────────────
 
 document.getElementById("log-date").value = new Date().toISOString().slice(0, 10);
@@ -932,7 +1108,7 @@ document.getElementById("btn-new-issue").addEventListener("click", openCreateMod
 
 // URL ハッシュからタブ復元
 const initialTab = location.hash.replace("#", "") || "board";
-switchTab(["board", "memo", "workflow", "settings"].includes(initialTab) ? initialTab : "board");
+switchTab(["board", "memo", "workflow", "report", "settings"].includes(initialTab) ? initialTab : "board");
 
 // 初期読み込み
 loadMembersAndWorkflows().then(() => loadIssues());

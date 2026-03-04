@@ -235,6 +235,62 @@ class IssueResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ---------- AI設定 スキーマ ----------
+
+
+class AISettingsUpdate(BaseModel):
+    """AI設定更新リクエスト."""
+
+    base_url: str | None = None
+    api_key: str | None = None
+    model: str | None = None
+
+
+class AISettingsResponse(BaseModel):
+    """AI設定レスポンス（api_key は返さない）."""
+
+    base_url: str | None
+    model: str | None
+    has_api_key: bool
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ---------- レポート スキーマ ----------
+
+ReportType = Literal["daily", "weekly", "monthly"]
+
+
+class ReportGenerateRequest(BaseModel):
+    """レポート生成リクエスト."""
+
+    report_type: ReportType
+    target_date: date
+
+
+class ReportListItem(BaseModel):
+    """レポート一覧アイテム（content を含まない軽量版）."""
+
+    id: int
+    report_type: str
+    period_start: date
+    period_end: date
+    title: str
+    is_ai_generated: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ReportResponse(ReportListItem):
+    """レポート詳細レスポンス（content を含む）."""
+
+    content: str
+
+
+# ---------- Issue スキーマ ----------
+
 class IssueListResponse(BaseModel):
     """イシュー一覧レスポンス（ログなし）."""
 
