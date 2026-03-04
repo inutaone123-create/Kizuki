@@ -85,6 +85,13 @@ uvicorn src.main:app --reload
 
 エディタのタブにカンバン画面が表示されます。
 
+## AI設定（レポート生成機能）
+
+📊 レポートタブでAI生成を使う場合は、⚙ 設定タブ → 🤖 AI設定 から接続情報を入力してください。
+Groq / Ollama / LM Studio / OpenRouter など OpenAI互換APIであれば利用できます。
+
+詳細は [docs/ai_setup.md](docs/ai_setup.md) を参照してください。
+
 ## API ドキュメント
 
 起動後、以下のURLでSwagger UIを確認できます：
