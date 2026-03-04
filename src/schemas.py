@@ -7,9 +7,10 @@ This implementation: 2026
 License: MIT
 """
 
+import json
 from datetime import datetime, date
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # ---------- WorkLog スキーマ ----------
 
@@ -71,6 +72,79 @@ class MemoResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ---------- Member スキーマ ----------
+
+
+class MemberCreate(BaseModel):
+    """メンバー作成リクエスト."""
+
+    name: str = Field(..., min_length=1, max_length=100, description="メンバー名")
+    color: str = Field("#6366f1", max_length=7, description="HEXカラーコード")
+
+
+class MemberUpdate(BaseModel):
+    """メンバー更新リクエスト（全フィールド任意）."""
+
+    name: str | None = Field(None, min_length=1, max_length=100)
+    color: str | None = Field(None, max_length=7)
+
+
+class MemberResponse(BaseModel):
+    """メンバーレスポンス."""
+
+    id: int
+    name: str
+    color: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ---------- Workflow スキーマ ----------
+
+
+class WorkflowCreate(BaseModel):
+    """ワークフロー作成リクエスト."""
+
+    name: str = Field(..., min_length=1, max_length=100, description="ワークフロー名")
+    steps: list[str] = Field(..., min_length=1, description="ステップ名リスト")
+
+
+class WorkflowUpdate(BaseModel):
+    """ワークフロー更新リクエスト（全フィールド任意）."""
+
+    name: str | None = Field(None, min_length=1, max_length=100)
+    steps: list[str] | None = None
+
+
+class WorkflowResponse(BaseModel):
+    """ワークフローレスポンス."""
+
+    id: int
+    name: str
+    steps: list[str]
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+    @field_validator("steps", mode="before")
+    @classmethod
+    def parse_steps(cls, v):
+        """steps JSON文字列をリストに変換する."""
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
+
+
+# ---------- WorkflowStep スキーマ ----------
+
+
+class WorkflowStepUpdate(BaseModel):
+    """ワークフローステップ更新リクエスト."""
+
+    step: int = Field(..., ge=0, description="新しいステップインデックス（0始まり）")
+
+
 # ---------- Issue スキーマ ----------
 
 StatusType = Literal["todo", "in_progress", "done"]
@@ -86,6 +160,9 @@ class IssueCreate(BaseModel):
     priority: PriorityType = "medium"
     category: str | None = None
     tags: str | None = Field(None, description="カンマ区切りタグ")
+    assignee_id: int | None = Field(None, description="担当者ID")
+    workflow_id: int | None = Field(None, description="ワークフローID")
+    workflow_step: int | None = Field(None, description="現在のステップインデックス")
 
 
 class IssueUpdate(BaseModel):
@@ -97,12 +174,43 @@ class IssueUpdate(BaseModel):
     priority: PriorityType | None = None
     category: str | None = None
     tags: str | None = None
+    assignee_id: int | None = None
+    workflow_id: int | None = None
+    workflow_step: int | None = None
 
 
 class IssueStatusUpdate(BaseModel):
     """イシューステータス更新リクエスト（カンバン用）."""
 
     status: StatusType
+
+
+class AssigneeInfo(BaseModel):
+    """担当者情報（イシューレスポンス用）."""
+
+    id: int
+    name: str
+    color: str
+
+    model_config = {"from_attributes": True}
+
+
+class WorkflowInfo(BaseModel):
+    """ワークフロー情報（イシューレスポンス用）."""
+
+    id: int
+    name: str
+    steps: list[str]
+
+    model_config = {"from_attributes": True}
+
+    @field_validator("steps", mode="before")
+    @classmethod
+    def parse_steps(cls, v):
+        """steps JSON文字列をリストに変換する."""
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
 
 
 class IssueResponse(BaseModel):
@@ -115,6 +223,11 @@ class IssueResponse(BaseModel):
     priority: str
     category: str | None
     tags: str | None
+    assignee_id: int | None
+    workflow_id: int | None
+    workflow_step: int | None
+    assignee: AssigneeInfo | None = None
+    workflow: WorkflowInfo | None = None
     created_at: datetime
     updated_at: datetime
     logs: list[WorkLogResponse] = []
@@ -132,6 +245,11 @@ class IssueListResponse(BaseModel):
     priority: str
     category: str | None
     tags: str | None
+    assignee_id: int | None
+    workflow_id: int | None
+    workflow_step: int | None
+    assignee: AssigneeInfo | None = None
+    workflow: WorkflowInfo | None = None
     created_at: datetime
     updated_at: datetime
 

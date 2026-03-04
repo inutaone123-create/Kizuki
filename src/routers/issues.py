@@ -18,7 +18,10 @@ from src.schemas import (
     IssueStatusUpdate,
     IssueResponse,
     IssueListResponse,
+    AssigneeInfo,
+    WorkflowInfo,
 )
+import json
 
 router = APIRouter(prefix="/api/issues", tags=["issues"])
 

@@ -13,8 +13,12 @@
 const state = {
   issues: [],
   memos: [],
+  members: [],
+  workflows: [],
   currentIssue: null,
   currentMemo: null,
+  currentMember: null,
+  currentWorkflow: null,
   filters: { status: "", priority: "", category: "" },
   activeTab: "board",
 };
@@ -42,11 +46,12 @@ const api = {
       );
       return apiFetch(`/api/issues${q.toString() ? "?" + q : ""}`);
     },
-    get:    (id)       => apiFetch(`/api/issues/${id}`),
-    create: (body)     => apiFetch("/api/issues", { method: "POST", body: JSON.stringify(body) }),
-    update: (id, body) => apiFetch(`/api/issues/${id}`, { method: "PUT", body: JSON.stringify(body) }),
-    delete: (id)       => apiFetch(`/api/issues/${id}`, { method: "DELETE" }),
-    patch:  (id, s)    => apiFetch(`/api/issues/${id}/status`, { method: "PATCH", body: JSON.stringify({ status: s }) }),
+    get:          (id)       => apiFetch(`/api/issues/${id}`),
+    create:       (body)     => apiFetch("/api/issues", { method: "POST", body: JSON.stringify(body) }),
+    update:       (id, body) => apiFetch(`/api/issues/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+    delete:       (id)       => apiFetch(`/api/issues/${id}`, { method: "DELETE" }),
+    patch:        (id, s)    => apiFetch(`/api/issues/${id}/status`, { method: "PATCH", body: JSON.stringify({ status: s }) }),
+    patchWfStep:  (id, step) => apiFetch(`/api/issues/${id}/workflow-step`, { method: "PATCH", body: JSON.stringify({ step }) }),
   },
   logs: {
     list:   (issueId)        => apiFetch(`/api/issues/${issueId}/logs`),
@@ -59,6 +64,18 @@ const api = {
     update:      (id, body)    => apiFetch(`/api/memos/${id}`, { method: "PUT", body: JSON.stringify(body) }),
     delete:      (id)          => apiFetch(`/api/memos/${id}`, { method: "DELETE" }),
     patchIssue:  (id, issueId) => apiFetch(`/api/memos/${id}/issue`, { method: "PATCH", body: JSON.stringify({ issue_id: issueId }) }),
+  },
+  members: {
+    list:   ()            => apiFetch("/api/members"),
+    create: (body)        => apiFetch("/api/members", { method: "POST", body: JSON.stringify(body) }),
+    update: (id, body)    => apiFetch(`/api/members/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+    delete: (id)          => apiFetch(`/api/members/${id}`, { method: "DELETE" }),
+  },
+  workflows: {
+    list:   ()            => apiFetch("/api/workflows"),
+    create: (body)        => apiFetch("/api/workflows", { method: "POST", body: JSON.stringify(body) }),
+    update: (id, body)    => apiFetch(`/api/workflows/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+    delete: (id)          => apiFetch(`/api/workflows/${id}`, { method: "DELETE" }),
   },
 };
 
@@ -93,11 +110,9 @@ function switchTab(tabName) {
     newIssueBtn.style.display = "none";
   }
 
-  if (tabName === "memo") {
-    loadMemos();
-  }
+  if (tabName === "memo") loadMemos();
+  if (tabName === "settings") loadSettings();
 
-  // URL ハッシュ保持
   location.hash = tabName;
 }
 
@@ -120,13 +135,30 @@ function buildCard(issue) {
         .map(t => `<span class="tag-badge">${escHtml(t)}</span>`).join("")
     : "";
 
+  // 担当者バッジ
+  const assigneeHtml = issue.assignee
+    ? `<span class="assignee-badge" style="background:${escHtml(issue.assignee.color)}">👤 ${escHtml(issue.assignee.name)}</span>`
+    : "";
+
+  // ワークフローステップ表示
+  let wfStepHtml = "";
+  if (issue.workflow && issue.workflow_step != null) {
+    const stepName = issue.workflow.steps[issue.workflow_step] || "";
+    if (stepName) {
+      wfStepHtml = `<span class="card-workflow-step">🔄 ${escHtml(stepName)}</span>`;
+    }
+  }
+
+  const hasFooter = assigneeHtml || wfStepHtml;
+
   card.innerHTML = `
     <div class="card-title">${escHtml(issue.title)}</div>
     <div class="card-meta">
       <span class="priority-badge ${issue.priority}">${PRIORITY_LABEL[issue.priority]}</span>
       ${issue.category ? `<span class="category-badge">${escHtml(issue.category)}</span>` : ""}
       ${tags}
-    </div>`;
+    </div>
+    ${hasFooter ? `<div class="card-footer">${wfStepHtml}${assigneeHtml}</div>` : ""}`;
 
   card.addEventListener("click", () => openDetail(issue.id));
   return card;
@@ -144,7 +176,6 @@ function renderBoard() {
     const body = document.getElementById(`col-${col}`);
     body.innerHTML = "";
     const items = filtered.filter(i => i.status === col);
-    // カウント更新
     document.getElementById(`count-${col}`).textContent = items.length;
     if (items.length === 0) {
       body.innerHTML = `<div class="empty-col">イシューがありません</div>`;
@@ -178,7 +209,7 @@ function initDragDrop() {
           showToast("ステータスを更新しました");
         } catch (e) {
           showToast(`エラー: ${e.message}`);
-          renderBoard(); // 元に戻す
+          renderBoard();
         }
       },
     });
@@ -197,6 +228,17 @@ async function loadIssues() {
   }
 }
 
+async function loadMembersAndWorkflows() {
+  try {
+    [state.members, state.workflows] = await Promise.all([
+      api.members.list(),
+      api.workflows.list(),
+    ]);
+  } catch (e) {
+    showToast(`設定データの取得に失敗: ${e.message}`);
+  }
+}
+
 function updateCategoryFilter() {
   const sel = document.getElementById("filter-category");
   const current = sel.value;
@@ -207,10 +249,25 @@ function updateCategoryFilter() {
 
 // ─── Create / Edit modal ─────────────────────────────────────────────────────
 
+function populateIssueFormSelects(selectedAssigneeId, selectedWorkflowId) {
+  const assigneeSel = document.getElementById("f-assignee");
+  assigneeSel.innerHTML = `<option value="">なし</option>` +
+    state.members.map(m =>
+      `<option value="${m.id}"${m.id === selectedAssigneeId ? " selected" : ""}>${escHtml(m.name)}</option>`
+    ).join("");
+
+  const workflowSel = document.getElementById("f-workflow");
+  workflowSel.innerHTML = `<option value="">なし</option>` +
+    state.workflows.map(wf =>
+      `<option value="${wf.id}"${wf.id === selectedWorkflowId ? " selected" : ""}>${escHtml(wf.name)}</option>`
+    ).join("");
+}
+
 function openCreateModal() {
   document.getElementById("issue-form").reset();
   document.getElementById("issue-id").value = "";
   document.getElementById("modal-issue-title-text").textContent = "新規イシュー";
+  populateIssueFormSelects(null, null);
   openModal("modal-issue");
 }
 
@@ -223,12 +280,15 @@ async function openEditModal(issue) {
   document.getElementById("f-category").value = issue.category || "";
   document.getElementById("f-tags").value = issue.tags || "";
   document.getElementById("modal-issue-title-text").textContent = "イシュー編集";
+  populateIssueFormSelects(issue.assignee_id, issue.workflow_id);
   openModal("modal-issue");
 }
 
 document.getElementById("issue-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const id = document.getElementById("issue-id").value;
+  const assigneeVal = document.getElementById("f-assignee").value;
+  const workflowVal = document.getElementById("f-workflow").value;
   const body = {
     title:       document.getElementById("f-title").value,
     description: document.getElementById("f-description").value || null,
@@ -236,10 +296,18 @@ document.getElementById("issue-form").addEventListener("submit", async (e) => {
     priority:    document.getElementById("f-priority").value,
     category:    document.getElementById("f-category").value || null,
     tags:        document.getElementById("f-tags").value || null,
+    assignee_id: assigneeVal ? Number(assigneeVal) : null,
+    workflow_id: workflowVal ? Number(workflowVal) : null,
+    workflow_step: workflowVal ? 0 : null,
   };
 
   try {
     if (id) {
+      // 編集時はworkflow_stepをリセットしない（変更があった場合のみ）
+      const current = state.issues.find(i => i.id === Number(id));
+      if (current && current.workflow_id === body.workflow_id) {
+        delete body.workflow_step; // ワークフロー変更なければステップ維持
+      }
       await api.issues.update(Number(id), body);
       showToast("イシューを更新しました");
     } else {
@@ -248,7 +316,6 @@ document.getElementById("issue-form").addEventListener("submit", async (e) => {
     }
     closeModal("modal-issue");
     await loadIssues();
-    // 詳細モーダルが開いていれば更新
     if (state.currentIssue && id) {
       await openDetail(state.currentIssue.id);
     }
@@ -267,25 +334,89 @@ async function openDetail(id) {
     document.getElementById("detail-title").textContent = issue.title;
 
     const meta = document.getElementById("detail-meta");
+    const assigneeBadge = issue.assignee
+      ? `<span class="assignee-badge" style="background:${escHtml(issue.assignee.color)}">👤 ${escHtml(issue.assignee.name)}</span>`
+      : "";
     meta.innerHTML = `
       <span class="priority-badge ${issue.priority}">${PRIORITY_LABEL[issue.priority]}</span>
       <span class="category-badge">${issue.status === "todo" ? "未着手" : issue.status === "in_progress" ? "進行中" : "完了"}</span>
       ${issue.category ? `<span class="category-badge">${escHtml(issue.category)}</span>` : ""}
       ${(issue.tags || "").split(",").map(t => t.trim()).filter(Boolean)
           .map(t => `<span class="tag-badge">${escHtml(t)}</span>`).join("")}
+      ${assigneeBadge}
     `;
 
     document.getElementById("detail-description").textContent =
       issue.description || "(説明なし)";
 
-    // ログ一覧
-    await renderLogs(issue.id);
+    // ワークフロー進捗表示
+    renderWorkflowSection(issue);
 
+    await renderLogs(issue.id);
     openModal("modal-detail");
   } catch (e) {
     showToast(`エラー: ${e.message}`);
   }
 }
+
+function renderWorkflowSection(issue) {
+  const section = document.getElementById("workflow-section");
+  if (!issue.workflow || issue.workflow_step == null) {
+    section.style.display = "none";
+    return;
+  }
+  section.style.display = "";
+
+  const steps = issue.workflow.steps;
+  const currentStep = issue.workflow_step;
+
+  const stepsEl = document.getElementById("workflow-steps");
+  stepsEl.innerHTML = steps.map((s, i) => {
+    let cls = "";
+    if (i < currentStep) cls = "done";
+    else if (i === currentStep) cls = "active";
+    const arrow = i < steps.length - 1 ? `<span class="workflow-step-arrow">→</span>` : "";
+    return `<div class="workflow-step-item">
+      <span class="workflow-step-bubble ${cls}">${escHtml(s)}</span>
+      ${arrow}
+    </div>`;
+  }).join("");
+
+  const prevBtn = document.getElementById("btn-wf-prev");
+  const nextBtn = document.getElementById("btn-wf-next");
+  prevBtn.disabled = currentStep <= 0;
+  nextBtn.disabled = currentStep >= steps.length - 1;
+}
+
+document.getElementById("btn-wf-prev").addEventListener("click", async () => {
+  const issue = state.currentIssue;
+  if (!issue || issue.workflow_step == null || issue.workflow_step <= 0) return;
+  try {
+    const updated = await api.issues.patchWfStep(issue.id, issue.workflow_step - 1);
+    state.currentIssue = updated;
+    renderWorkflowSection(updated);
+    await loadIssues();
+    showToast("ステップを戻しました");
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
+});
+
+document.getElementById("btn-wf-next").addEventListener("click", async () => {
+  const issue = state.currentIssue;
+  if (!issue || issue.workflow_step == null) return;
+  const maxStep = (issue.workflow?.steps?.length ?? 1) - 1;
+  if (issue.workflow_step >= maxStep) return;
+  try {
+    const updated = await api.issues.patchWfStep(issue.id, issue.workflow_step + 1);
+    state.currentIssue = updated;
+    renderWorkflowSection(updated);
+    await loadIssues();
+    showToast("次のステップへ進みました");
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
+});
 
 // ─── WorkLog ─────────────────────────────────────────────────────────────────
 
@@ -392,7 +523,6 @@ function renderMemos() {
     return;
   }
 
-  // 日付ごとにグループ化
   const groups = {};
   state.memos.forEach(memo => {
     const d = memo.logged_at;
@@ -495,6 +625,183 @@ async function deleteMemo(memoId) {
 
 document.getElementById("btn-new-memo").addEventListener("click", openCreateMemoModal);
 
+// ─── Settings screen ──────────────────────────────────────────────────────────
+
+async function loadSettings() {
+  await loadMembersAndWorkflows();
+  renderMembers();
+  renderWorkflows();
+}
+
+// ── Members ──
+
+function renderMembers() {
+  const container = document.getElementById("member-list");
+  if (state.members.length === 0) {
+    container.innerHTML = `<div class="empty-col">メンバーがいません</div>`;
+    return;
+  }
+  container.innerHTML = state.members.map(m => `
+    <div class="member-item">
+      <div class="member-info">
+        <span class="member-color-dot" style="background:${escHtml(m.color)}"></span>
+        <span class="member-name">${escHtml(m.name)}</span>
+      </div>
+      <div class="item-actions">
+        <button class="btn btn-ghost btn-sm" onclick="openEditMemberModal(${m.id})">✏️ 編集</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteMember(${m.id})">🗑️ 削除</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function openCreateMemberModal() {
+  document.getElementById("member-form").reset();
+  document.getElementById("member-id").value = "";
+  document.getElementById("mb-color").value = "#6366f1";
+  document.getElementById("mb-color-text").textContent = "#6366f1";
+  document.getElementById("modal-member-title-text").textContent = "新規メンバー";
+  state.currentMember = null;
+  openModal("modal-member");
+}
+
+function openEditMemberModal(memberId) {
+  const member = state.members.find(m => m.id === memberId);
+  if (!member) return;
+  state.currentMember = member;
+  document.getElementById("member-id").value = member.id;
+  document.getElementById("mb-name").value = member.name;
+  document.getElementById("mb-color").value = member.color;
+  document.getElementById("mb-color-text").textContent = member.color;
+  document.getElementById("modal-member-title-text").textContent = "メンバー編集";
+  openModal("modal-member");
+}
+
+document.getElementById("mb-color").addEventListener("input", (e) => {
+  document.getElementById("mb-color-text").textContent = e.target.value;
+});
+
+document.getElementById("member-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("member-id").value;
+  const body = {
+    name:  document.getElementById("mb-name").value.trim(),
+    color: document.getElementById("mb-color").value,
+  };
+  try {
+    if (id) {
+      await api.members.update(Number(id), body);
+      showToast("メンバーを更新しました");
+    } else {
+      await api.members.create(body);
+      showToast("メンバーを追加しました");
+    }
+    closeModal("modal-member");
+    await loadSettings();
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
+});
+
+async function deleteMember(memberId) {
+  const member = state.members.find(m => m.id === memberId);
+  if (!confirm(`「${member?.name}」を削除しますか？`)) return;
+  try {
+    await api.members.delete(memberId);
+    showToast("メンバーを削除しました");
+    await loadSettings();
+    await loadIssues(); // カードの担当者表示を更新
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
+}
+
+document.getElementById("btn-new-member").addEventListener("click", openCreateMemberModal);
+
+// ── Workflows ──
+
+function renderWorkflows() {
+  const container = document.getElementById("workflow-list");
+  if (state.workflows.length === 0) {
+    container.innerHTML = `<div class="empty-col">ワークフローがありません</div>`;
+    return;
+  }
+  container.innerHTML = state.workflows.map(wf => `
+    <div class="workflow-item">
+      <div class="workflow-info">
+        <span class="workflow-name">${escHtml(wf.name)}</span>
+        <span class="workflow-steps-preview">${wf.steps.map(s => escHtml(s)).join(" → ")}</span>
+      </div>
+      <div class="item-actions">
+        <button class="btn btn-ghost btn-sm" onclick="openEditWorkflowModal(${wf.id})">✏️ 編集</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteWorkflow(${wf.id})">🗑️ 削除</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function openCreateWorkflowModal() {
+  document.getElementById("workflow-form").reset();
+  document.getElementById("wf-id").value = "";
+  document.getElementById("modal-workflow-title-text").textContent = "新規ワークフロー";
+  state.currentWorkflow = null;
+  openModal("modal-workflow");
+}
+
+function openEditWorkflowModal(workflowId) {
+  const wf = state.workflows.find(w => w.id === workflowId);
+  if (!wf) return;
+  state.currentWorkflow = wf;
+  document.getElementById("wf-id").value = wf.id;
+  document.getElementById("wf-name").value = wf.name;
+  document.getElementById("wf-steps").value = wf.steps.join(",");
+  document.getElementById("modal-workflow-title-text").textContent = "ワークフロー編集";
+  openModal("modal-workflow");
+}
+
+document.getElementById("workflow-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("wf-id").value;
+  const stepsRaw = document.getElementById("wf-steps").value;
+  const steps = stepsRaw.split(",").map(s => s.trim()).filter(Boolean);
+  if (steps.length === 0) {
+    showToast("ステップを1つ以上入力してください");
+    return;
+  }
+  const body = {
+    name:  document.getElementById("wf-name").value.trim(),
+    steps,
+  };
+  try {
+    if (id) {
+      await api.workflows.update(Number(id), body);
+      showToast("ワークフローを更新しました");
+    } else {
+      await api.workflows.create(body);
+      showToast("ワークフローを追加しました");
+    }
+    closeModal("modal-workflow");
+    await loadSettings();
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
+});
+
+async function deleteWorkflow(workflowId) {
+  const wf = state.workflows.find(w => w.id === workflowId);
+  if (!confirm(`「${wf?.name}」を削除しますか？`)) return;
+  try {
+    await api.workflows.delete(workflowId);
+    showToast("ワークフローを削除しました");
+    await loadSettings();
+    await loadIssues();
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
+}
+
+document.getElementById("btn-new-workflow").addEventListener("click", openCreateWorkflowModal);
+
 // ─── Modal helpers ───────────────────────────────────────────────────────────
 
 function openModal(id) {
@@ -531,15 +838,12 @@ function escHtml(str) {
 
 // ─── Init ────────────────────────────────────────────────────────────────────
 
-// 今日の日付をログ日付フィールドのデフォルトに
 document.getElementById("log-date").value = new Date().toISOString().slice(0, 10);
-
-// 新規ボタン
 document.getElementById("btn-new-issue").addEventListener("click", openCreateModal);
 
 // URL ハッシュからタブ復元
 const initialTab = location.hash.replace("#", "") || "board";
-switchTab(["board", "memo"].includes(initialTab) ? initialTab : "board");
+switchTab(["board", "memo", "settings"].includes(initialTab) ? initialTab : "board");
 
 // 初期読み込み
-loadIssues();
+loadMembersAndWorkflows().then(() => loadIssues());

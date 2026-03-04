@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse
 
 from src.database import init_db
 from src.routers import issues, logs, memos
+from src.routers import members, workflows
 
 
 @asynccontextmanager
@@ -32,6 +33,8 @@ app = FastAPI(
 app.include_router(issues.router)
 app.include_router(logs.router)
 app.include_router(memos.router)
+app.include_router(members.router)
+app.include_router(workflows.router)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
