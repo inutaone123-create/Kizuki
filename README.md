@@ -53,6 +53,32 @@ uvicorn src.main:app --reload
 
 ブラウザで http://localhost:8000 を開く。
 
+## VSCode で使う
+
+### サーバーの自動起動（tasks.json）
+
+`.vscode/tasks.json` が同梱されているため、VSCode でフォルダを開くと自動的にサーバー起動タスクが実行されます。
+
+初回のみ、右下に表示されるポップアップで **「Allow」（許可）** をクリックしてください。
+
+手動で起動したい場合は：
+
+1. `Ctrl+Shift+P` でコマンドパレットを開く
+2. `Tasks: Run Task` と入力
+3. `Start Server` を選択
+
+ターミナルに `Application startup complete.` と表示されれば起動完了です。
+
+### Simple Browser でアプリを開く
+
+外部ブラウザを使わず、VSCode のパネル内でアプリを表示できます。
+
+1. サーバー起動後、`Ctrl+Shift+P` でコマンドパレットを開く
+2. `Simple Browser: Show` と入力・選択
+3. URL に `http://localhost:8000` を入力して Enter
+
+エディタのタブにカンバン画面が表示されます。
+
 ## API ドキュメント
 
 起動後、以下のURLでSwagger UIを確認できます：
