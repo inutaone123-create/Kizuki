@@ -1,4 +1,4 @@
-<!-- 公開URL: https://qiita.com/inuta-one/items/559b22ff5daca1763711 -->
+<!-- 公開URL: https://qiita.com/inuta-one/items/1f167bde2159ac53a030 -->
 ---
 title: 【Kizuki 機能追加】ワークフロー横断ビューをバックエンド変更ゼロ・Vanilla JS だけで実装した
 tags:
