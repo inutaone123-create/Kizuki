@@ -1,3 +1,4 @@
+<!-- 公開URL: https://qiita.com/inuta-one/items/3aded768d7f5249439dc -->
 ---
 title: 【Kizuki 機能追加】メモから日報・週報・月報を自動生成。AI連携 + テンプレートフォールバック設計
 tags:
