@@ -1,3 +1,4 @@
+<!-- 公開URL: https://qiita.com/inuta-one/items/559b22ff5daca1763711 -->
 ---
 title: 【Kizuki 機能追加】ワークフロー横断ビューをバックエンド変更ゼロ・Vanilla JS だけで実装した
 tags:
@@ -247,6 +248,42 @@ async function loadWorkflowMatrix() {
 board.style.gridTemplateColumns = `repeat(${wf.steps.length}, 220px)`;
 ```
 
+### モーダルを閉じてもマトリクスが更新されない
+
+ワークフロービューでイシューを開き、詳細モーダル内でステップを変更したあと、モーダルを閉じても**背景のマトリクスが更新されない**という問題がありました。
+
+原因は `closeModal()` が汎用関数になっており、閉じた後の再描画処理がなかったことです。
+
+```javascript
+// ❌ 修正前
+function closeModal(id) {
+  const overlay = document.getElementById(id);
+  overlay.classList.remove("active");
+  overlay.addEventListener("transitionend", () => {
+    overlay.style.display = "none";  // ここで終わっていた
+  }, { once: true });
+}
+```
+
+ステップ変更時に `loadIssues()` で `state.issues` は最新化されているのに、`renderWorkflowMatrix()` が呼ばれていないのが原因です。`closeModal()` の `transitionend` フックに、ワークフロータブの場合のみ再描画を差し込みました。
+
+```javascript
+// ✅ 修正後
+function closeModal(id) {
+  const overlay = document.getElementById(id);
+  overlay.classList.remove("active");
+  overlay.addEventListener("transitionend", () => {
+    overlay.style.display = "none";
+    // ワークフロータブで詳細モーダルを閉じた時だけ再描画
+    if (id === "modal-detail" && state.activeTab === "workflow") {
+      renderWorkflowMatrix();
+    }
+  }, { once: true });
+}
+```
+
+`id === "modal-detail"` と `state.activeTab === "workflow"` の2条件で絞ることで、他のタブやモーダルには影響しません。
+
 ---
 
 ## ソースコード
@@ -261,6 +298,7 @@ https://github.com/inutaone123-create/Kizuki
 - **重複コードゼロ** — `buildCard()` / `openDetail()` を流用することで、カンバンとマトリクスが常に同じ表示を共有
 - **158行の追加**で新タブ + 横スクロール対応カンバンを実現
 - CSS 変数を使い回すことで、テーマ変更が全ビューに一括反映
+- **汎用関数への最小フック** — `closeModal()` に2条件の分岐を追加するだけで、他のタブ・モーダルに影響なく再描画を実現
 
 「表示ビューの追加は新しいバックエンドAPIが必要」という思い込みがありましたが、既存データの**グループ化とレイアウトの工夫**だけで十分なケースも多いと実感しました。
 
