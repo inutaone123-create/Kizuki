@@ -1,3 +1,18 @@
+<!-- 公開URL: https://qiita.com/inuta-one/items/874ca5c9dfa759341e75 -->
+---
+title: FastAPI製カンバンツールをElectronでデスクトップアプリ化した話——PyInstaller同梱という選択
+tags:
+  - Python
+  - Electron
+  - FastAPI
+  - PyInstaller
+  - 個人開発
+emoji: 🖥️
+type: tech
+topics: []
+published: true
+---
+
 # FastAPI製カンバンツールをElectronでデスクトップアプリ化した話——PyInstaller同梱という選択
 
 ## はじめに
