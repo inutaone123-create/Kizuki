@@ -235,6 +235,15 @@ https://github.com/inutaone123-create/Kizuki
 
 <!-- プロジェクト進行中に発見した言語別・ライブラリ別のハマりどころを記録する -->
 
+## Qiita 公開記事一覧
+
+- 第1弾: https://qiita.com/inuta-one/items/5639187fea87fa620c16
+- 第2弾: https://qiita.com/inuta-one/items/c0ee88be2066a366c49b
+- 第3弾: https://qiita.com/inuta-one/items/559b22ff5daca1763711
+- 第4弾: https://qiita.com/inuta-one/items/1f167bde2159ac53a030
+- 第5弾: https://qiita.com/inuta-one/items/3aded768d7f5249439dc
+- 第6弾: https://qiita.com/inuta-one/items/874ca5c9dfa759341e75
+
 ### Python / FastAPI
 - `async def` エンドポイント × 同期 SQLAlchemy `Session` は問題なく共存できる（httpx の await だけが非同期）
 - SQLAlchemy の `Base.metadata.create_all()` でモデル追加時は新規起動で自動テーブル作成（新規 DB はマイグレーション不要）
