@@ -7,10 +7,13 @@ This implementation: 2026
 License: MIT
 """
 
+import os
+
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
-DATABASE_URL = "sqlite:///./data/issuelog.db"
+_db_path = os.environ.get("KIZUKI_DB_PATH", "./data/issuelog.db")
+DATABASE_URL = f"sqlite:///{_db_path}"
 
 engine = create_engine(
     DATABASE_URL,

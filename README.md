@@ -14,6 +14,7 @@
 - **カスタムワークフロー**: 任意のステップ（例: 申請→承認→実行→完了）を定義してイシューに適用
 - **ワークフロー横断ビュー**: 🔄 タブでワークフロー × ステップのカンバンを一覧表示
 - **レポート生成**: 📊 タブで日報・週報・月報を自動生成（AI連携 or テンプレートフォールバック）
+- **デスクトップアプリ化**: Electron + PyInstaller で Docker 不要のスタンドアロン配布が可能
 
 ## 技術スタック
 
@@ -22,9 +23,39 @@
 | バックエンド | Python 3 + FastAPI + SQLAlchemy |
 | データベース | SQLite (`data/issuelog.db`) |
 | フロントエンド | HTML / CSS / Vanilla JS |
-| 外部ライブラリ | SortableJS (D&D) + marked.js (Markdown) |
+| 外部ライブラリ | SortableJS (D&D) + marked.js (Markdown)（vendored） |
+| デスクトップ | Electron 28 + electron-builder |
+| バイナリ化 | PyInstaller（Python/FastAPI を `.exe` に同梱） |
 
 ## 起動手順
+
+### デスクトップアプリ版（Electron）
+
+Python や Docker 不要で、インストーラーを実行するだけで起動できます。
+
+```bash
+# 1. Python バイナリを生成（Windows 上で実行）
+pip install pyinstaller
+pyinstaller kizuki.spec --clean
+# → dist/kizuki-server/ が生成される
+
+# 2. Electron インストーラーを生成
+npm install
+npm run build:win
+# → build/electron-dist/Kizuki Setup 1.0.0.exe が生成される
+```
+
+#### 開発時の動作確認
+
+```bash
+# Python サーバーを単体起動
+python server_entry.py
+
+# 別ターミナルで Electron を起動
+npm start
+```
+
+### Web アプリ版（Docker / Python 直接）
 
 ### 前提
 
@@ -175,9 +206,11 @@ python3 -m pytest tests/ -v
 
 ```
 kizuki/
+├── electron/
+│   └── main.js          # Electron メインプロセス（サーバー管理・ウィンドウ作成）
 ├── src/
-│   ├── main.py          # FastAPIエントリーポイント
-│   ├── database.py      # DB設定・初期化
+│   ├── main.py          # FastAPIエントリーポイント（_MEIPASS 対応）
+│   ├── database.py      # DB設定・初期化（KIZUKI_DB_PATH 環境変数対応）
 │   ├── models.py        # SQLAlchemyモデル
 │   ├── schemas.py       # Pydanticスキーマ
 │   ├── routers/
@@ -193,7 +226,10 @@ kizuki/
 ├── static/
 │   ├── index.html       # UI（カンバン・メモ・ワークフロー・レポート）
 │   ├── style.css        # スタイル
-│   └── app.js           # フロントエンドロジック
+│   ├── app.js           # フロントエンドロジック
+│   └── vendor/
+│       ├── Sortable.min.js  # SortableJS（オフライン用ベンダー化）
+│       └── marked.min.js    # marked.js（オフライン用ベンダー化）
 ├── tests/
 │   ├── conftest.py           # テスト設定（インメモリDB）
 │   ├── test_issues.py        # イシューAPIテスト
@@ -209,6 +245,11 @@ kizuki/
 │   └── migrate_reports.py         # マイグレーション（AI設定・レポート）
 ├── docs/
 │   └── ai_setup.md    # AI設定ガイド（Groq/Ollama/OpenRouter etc.）
+├── assets/
+│   └── icon.ico       # アプリアイコン（Electron 用）
+├── server_entry.py    # PyInstaller 用エントリーポイント
+├── kizuki.spec        # PyInstaller ビルド設定
+├── package.json       # Electron + electron-builder 設定
 ├── data/              # SQLiteファイル置き場
 └── requirements.txt
 ```
