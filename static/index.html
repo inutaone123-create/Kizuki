@@ -135,7 +135,10 @@
   <section class="settings-section">
     <div class="settings-section-header">
       <h2>🔄 ワークフロー管理</h2>
-      <button id="btn-new-workflow" class="btn btn-primary btn-sm">＋ 追加</button>
+      <div style="display:flex;gap:0.5rem">
+        <button id="btn-suggest-workflow" class="btn btn-ghost btn-sm">💡 AI提案</button>
+        <button id="btn-new-workflow" class="btn btn-primary btn-sm">＋ 追加</button>
+      </div>
     </div>
     <div id="workflow-list" class="workflow-list"></div>
   </section>
@@ -433,6 +436,44 @@
     <div class="modal-body">
       <div class="report-meta" id="report-modal-meta"></div>
       <div class="report-content" id="report-modal-content"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: ワークフロー AI提案 ──────────────────────────────────── -->
+<div id="modal-suggest-workflow" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>💡 ワークフロー提案</h2>
+      <button id="btn-close-suggest-workflow" class="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="suggest-loading" style="text-align:center;padding:2rem">
+        <div class="spinner"></div>
+        <p>タスクを分析中...</p>
+      </div>
+      <div id="suggest-result" style="display:none">
+        <div class="form-group">
+          <label>提案ワークフロー名</label>
+          <input type="text" id="suggest-name" class="suggest-name-input">
+        </div>
+        <div class="form-group">
+          <label>提案ステップ</label>
+          <div id="suggest-steps-list" class="suggest-steps-list"></div>
+          <p id="suggest-reason" class="suggest-reason"></p>
+        </div>
+        <div class="form-group">
+          <label for="suggest-category">カテゴリで絞り込んで再提案</label>
+          <div style="display:flex;gap:0.5rem">
+            <input type="text" id="suggest-category" placeholder="例: フロントエンド">
+            <button id="btn-re-suggest" class="btn btn-ghost btn-sm">🔄 再提案</button>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" id="btn-cancel-suggest-workflow">キャンセル</button>
+          <button id="btn-approve-workflow" class="btn btn-primary">✅ このワークフローを保存</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>

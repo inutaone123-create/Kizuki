@@ -284,3 +284,113 @@ async def generate_report(
         content = generate_monthly_template(start, end, memos)
 
     return title, content, start, end, False
+
+
+# ─── ワークフロー提案 ──────────────────────────────────────────────────────────
+
+_SYSTEM_SUGGEST_WORKFLOW = (
+    "あなたはプロジェクト管理のエキスパートです。"
+    "ユーザーが提供するタスク一覧を分析し、最適なワークフローのステップを提案してください。"
+    "ステップ名のみをJSON配列で返してください。例: [\"設計\", \"実装\", \"レビュー\", \"完了\"]"
+    "ステップ数は3〜6個が適切です。余分な説明文は不要です。JSON配列のみを返してください。"
+)
+
+_FALLBACK_WORKFLOWS = [
+    {
+        "name": "標準開発フロー",
+        "steps": ["設計", "実装", "テスト", "レビュー", "完了"],
+        "reason": "最も一般的な開発ワークフローです。",
+    },
+    {
+        "name": "シンプルタスクフロー",
+        "steps": ["着手", "作業中", "確認", "完了"],
+        "reason": "シンプルなタスク管理に適したフローです。",
+    },
+    {
+        "name": "承認フロー",
+        "steps": ["申請", "審査", "承認", "実施", "完了"],
+        "reason": "承認プロセスが必要な業務に適したフローです。",
+    },
+]
+
+
+async def suggest_workflow(
+    db: Session, category: str | None = None
+) -> dict:
+    """既存タスクを分析してワークフローを提案する.
+
+    Args:
+        db: DBセッション
+        category: フィルタリングするカテゴリ（任意）
+
+    Returns:
+        suggested_name: 提案ワークフロー名
+        suggested_steps: 提案ステップリスト
+        reason: 提案理由
+        is_ai_generated: AI生成フラグ
+    """
+    from src.models import Issue
+
+    # タスク情報を収集
+    query = db.query(Issue)
+    if category:
+        query = query.filter(Issue.category == category)
+    issues = query.order_by(Issue.updated_at.desc()).limit(30).all()
+
+    # AI設定を確認
+    ai_cfg = db.query(AISettings).filter(AISettings.id == 1).first()
+    use_ai = (
+        ai_cfg is not None
+        and ai_cfg.base_url
+        and ai_cfg.api_key
+        and ai_cfg.model
+    )
+
+    if use_ai and issues:
+        try:
+            import json as _json
+            # タスク情報をプロンプト用に整形
+            task_summary = "\n".join(
+                f"- [{i.status}] {i.title}"
+                + (f" (カテゴリ: {i.category})" if i.category else "")
+                for i in issues
+            )
+            user_prompt = (
+                f"以下のタスク一覧を分析して、最適なワークフローのステップをJSON配列で提案してください。\n\n{task_summary}"
+            )
+            raw = await call_ai_api(
+                ai_cfg.base_url, ai_cfg.api_key, ai_cfg.model,
+                _SYSTEM_SUGGEST_WORKFLOW, user_prompt,
+            )
+            # JSON配列を抽出
+            raw = raw.strip()
+            if raw.startswith("```"):
+                raw = raw.split("```")[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
+            steps = _json.loads(raw.strip())
+            if isinstance(steps, list) and all(isinstance(s, str) for s in steps):
+                name = "AI提案フロー" + (f"（{category}）" if category else "")
+                return {
+                    "suggested_name": name,
+                    "suggested_steps": steps,
+                    "reason": "現在のタスクパターンを分析して提案しました。",
+                    "is_ai_generated": True,
+                }
+        except Exception:
+            pass  # フォールバックへ
+
+    # フォールバック: カテゴリに応じてテンプレートを選択
+    if category and any(kw in category for kw in ["承認", "申請", "審査"]):
+        suggestion = _FALLBACK_WORKFLOWS[2]
+    elif issues and len(issues) > 10:
+        suggestion = _FALLBACK_WORKFLOWS[0]
+    else:
+        suggestion = _FALLBACK_WORKFLOWS[1]
+
+    return {
+        "suggested_name": suggestion["name"],
+        "suggested_steps": suggestion["steps"],
+        "reason": suggestion["reason"],
+        "is_ai_generated": False,
+    }

@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse
 
 from src.database import init_db
 from src.routers import issues, logs, memos
-from src.routers import members, workflows, reports, settings, dependencies
+from src.routers import members, workflows, reports, settings, dependencies, ai as ai_router
 
 # PyInstaller で freeze された場合は _MEIPASS を、通常実行時は src の親ディレクトリを使用
 if getattr(sys, "frozen", False):
@@ -48,6 +48,7 @@ app.include_router(workflows.router)
 app.include_router(reports.router)
 app.include_router(settings.router)
 app.include_router(dependencies.router)
+app.include_router(ai_router.router)
 
 app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 

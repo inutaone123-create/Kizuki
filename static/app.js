@@ -100,6 +100,12 @@ const api = {
       method: "DELETE",
     }),
   },
+  ai: {
+    suggestWorkflow: (category) => {
+      const params = category ? `?category=${encodeURIComponent(category)}` : '';
+      return fetch(`/api/ai/suggest-workflow${params}`, { method: 'POST' }).then(r => r.json());
+    },
+  },
 };
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
@@ -1202,6 +1208,85 @@ document.getElementById("ai-settings-form").addEventListener("submit", async (e)
     showToast("AI設定を保存しました");
   } catch (e) {
     showToast(`保存に失敗: ${e.message}`);
+  }
+});
+
+// ── ワークフロー AI提案 ────────────────────────────────────────────────
+async function openSuggestWorkflowModal(category = '') {
+  const modal = document.getElementById('modal-suggest-workflow');
+  document.getElementById('suggest-loading').style.display = 'block';
+  document.getElementById('suggest-result').style.display = 'none';
+  document.getElementById('suggest-category').value = category;
+  modal.style.display = 'flex';
+
+  try {
+    const data = await api.ai.suggestWorkflow(category || null);
+    document.getElementById('suggest-name').value = data.suggested_name;
+    document.getElementById('suggest-reason').textContent =
+      (data.is_ai_generated ? '🤖 AI分析: ' : '📋 テンプレート: ') + data.reason;
+
+    const stepsList = document.getElementById('suggest-steps-list');
+    stepsList.innerHTML = data.suggested_steps
+      .map(s => `<span class="suggest-step-badge">${s}</span>`)
+      .join('<span class="suggest-step-arrow">→</span>');
+
+    // 承認ボタンに提案データを保持
+    document.getElementById('btn-approve-workflow').dataset.steps =
+      JSON.stringify(data.suggested_steps);
+
+    document.getElementById('suggest-loading').style.display = 'none';
+    document.getElementById('suggest-result').style.display = 'block';
+  } catch (e) {
+    document.getElementById('suggest-loading').innerHTML = '<p style="color:red">提案の取得に失敗しました</p>';
+  }
+}
+
+document.getElementById('btn-suggest-workflow').addEventListener('click', () => {
+  openSuggestWorkflowModal();
+});
+
+document.getElementById('btn-close-suggest-workflow').addEventListener('click', () => {
+  document.getElementById('modal-suggest-workflow').style.display = 'none';
+});
+
+document.getElementById('btn-cancel-suggest-workflow').addEventListener('click', () => {
+  document.getElementById('modal-suggest-workflow').style.display = 'none';
+});
+
+document.getElementById('btn-re-suggest').addEventListener('click', () => {
+  const cat = document.getElementById('suggest-category').value.trim();
+  document.getElementById('suggest-loading').style.display = 'block';
+  document.getElementById('suggest-loading').innerHTML = '<div class="spinner"></div><p>タスクを分析中...</p>';
+  document.getElementById('suggest-result').style.display = 'none';
+  api.ai.suggestWorkflow(cat || null).then(data => {
+    document.getElementById('suggest-name').value = data.suggested_name;
+    document.getElementById('suggest-reason').textContent =
+      (data.is_ai_generated ? '🤖 AI分析: ' : '📋 テンプレート: ') + data.reason;
+    const stepsList = document.getElementById('suggest-steps-list');
+    stepsList.innerHTML = data.suggested_steps
+      .map(s => `<span class="suggest-step-badge">${s}</span>`)
+      .join('<span class="suggest-step-arrow">→</span>');
+    document.getElementById('btn-approve-workflow').dataset.steps =
+      JSON.stringify(data.suggested_steps);
+    document.getElementById('suggest-loading').style.display = 'none';
+    document.getElementById('suggest-result').style.display = 'block';
+  }).catch(() => {
+    document.getElementById('suggest-loading').innerHTML = '<p style="color:red">再提案に失敗しました</p>';
+  });
+});
+
+document.getElementById('btn-approve-workflow').addEventListener('click', async () => {
+  const name = document.getElementById('suggest-name').value.trim();
+  const steps = JSON.parse(document.getElementById('btn-approve-workflow').dataset.steps || '[]');
+  if (!name || steps.length === 0) return;
+  try {
+    await api.workflows.create({ name, steps });
+    document.getElementById('modal-suggest-workflow').style.display = 'none';
+    await loadWorkflows();
+    renderWorkflowSettings();
+    renderWorkflowMatrix();
+  } catch (e) {
+    alert('ワークフローの保存に失敗しました');
   }
 });
 

@@ -1210,3 +1210,10 @@ body {
 .dep-item-status { font-size: 0.75rem; padding: 0.1rem 0.4rem; border-radius: 3px; background: var(--border); margin-right: 0.4rem; }
 .dep-item-status.done { background: #d1fae5; color: #065f46; }
 .badge-blocked { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.7rem; font-weight: bold; }
+
+/* ワークフロー提案モーダル */
+.suggest-steps-list { display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem; margin: 0.5rem 0; }
+.suggest-step-badge { background: var(--primary, #6366f1); color: #fff; padding: 0.25rem 0.7rem; border-radius: 1rem; font-size: 0.85rem; }
+.suggest-step-arrow { color: var(--text-muted, #888); font-size: 1rem; }
+.suggest-reason { font-size: 0.85rem; color: var(--text-muted, #888); margin-top: 0.5rem; }
+.suggest-name-input { width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 1rem; }
