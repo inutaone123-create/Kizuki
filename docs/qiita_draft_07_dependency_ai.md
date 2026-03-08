@@ -1,3 +1,4 @@
+<!-- 公開URL: https://qiita.com/inuta-one/items/1588fb1a9e84eb66e4c3 -->
 ---
 title: OSSから学んだ「タスク依存関係」と「AIワークフロー自動提案」をカンバンツールに実装した話
 tags:
@@ -9,7 +10,7 @@ tags:
 emoji: 🔒
 type: tech
 topics: []
-published: false
+published: true
 ---
 
 # OSSから学んだ「タスク依存関係」と「AIワークフロー自動提案」をカンバンツールに実装した話
