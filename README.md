@@ -34,16 +34,24 @@
 Python や Docker 不要で、インストーラーを実行するだけで起動できます。
 
 ```bash
-# 1. Python バイナリを生成（Windows 上で実行）
+# 1. 依存パッケージをインストール（Python 3.13 推奨）
+pip install -r requirements.txt
 pip install pyinstaller
-pyinstaller kizuki.spec --clean
-# → dist/kizuki-server/ が生成される
 
-# 2. Electron インストーラーを生成
+# 2. Python バイナリを生成（Windows 上で実行）
+pyinstaller kizuki.spec --clean -y
+# → dist/kizuki-server/ が生成される
+# ※ --clean はビルドキャッシュ削除、-y は既存 dist/ を確認なしで上書き（両方必須）
+
+# 3. Electron インストーラーを生成
 npm install
 npm run build:win
 # → build/electron-dist/Kizuki Setup 1.0.0.exe が生成される
 ```
+
+> **Windows の注意事項**
+> - `npm run build:win` は **開発者モード**（設定 → システム → 開発者向け → 開発者モード: オン）が必要です。オフの場合、electron-builder がシンボリックリンクを作成できずビルドが失敗します。
+> - アプリアイコン（`assets/icon.ico`）がない場合、Windows のデフォルトアイコンが使用されますが動作に問題はありません。
 
 #### 開発時の動作確認
 
@@ -245,8 +253,6 @@ kizuki/
 │   └── migrate_reports.py         # マイグレーション（AI設定・レポート）
 ├── docs/
 │   └── ai_setup.md    # AI設定ガイド（Groq/Ollama/OpenRouter etc.）
-├── assets/
-│   └── icon.ico       # アプリアイコン（Electron 用）
 ├── server_entry.py    # PyInstaller 用エントリーポイント
 ├── kizuki.spec        # PyInstaller ビルド設定
 ├── package.json       # Electron + electron-builder 設定

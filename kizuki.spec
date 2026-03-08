@@ -7,56 +7,41 @@
 # This implementation: 2026
 # License: MIT
 
+from PyInstaller.utils.hooks import collect_all, collect_submodules
+
 block_cipher = None
+
+# uvicorn・fastapi・sqlalchemy を丸ごと収集
+uvicorn_datas, uvicorn_binaries, uvicorn_hiddenimports = collect_all('uvicorn')
+fastapi_datas, fastapi_binaries, fastapi_hiddenimports = collect_all('fastapi')
+starlette_datas, starlette_binaries, starlette_hiddenimports = collect_all('starlette')
+sqlalchemy_hiddenimports = collect_submodules('sqlalchemy')
+pydantic_datas, pydantic_binaries, pydantic_hiddenimports = collect_all('pydantic')
+anyio_hiddenimports = collect_submodules('anyio')
 
 a = Analysis(
     ['server_entry.py'],
     pathex=['.'],
-    binaries=[],
+    binaries=[] + uvicorn_binaries + fastapi_binaries + starlette_binaries + pydantic_binaries,
     datas=[
         ('static', 'static'),
         ('src', 'src'),
         ('templates', 'templates'),
-    ],
-    hiddenimports=[
-        # uvicorn
-        'uvicorn',
-        'uvicorn.logging',
-        'uvicorn.loops',
-        'uvicorn.loops.auto',
-        'uvicorn.loops.asyncio',
-        'uvicorn.protocols',
-        'uvicorn.protocols.http',
-        'uvicorn.protocols.http.auto',
-        'uvicorn.protocols.http.h11_impl',
-        'uvicorn.protocols.websockets',
-        'uvicorn.protocols.websockets.auto',
-        'uvicorn.lifespan',
-        'uvicorn.lifespan.on',
-        # fastapi / starlette
-        'fastapi',
-        'starlette',
-        'starlette.routing',
-        'starlette.staticfiles',
-        'starlette.responses',
-        'starlette.middleware',
-        'starlette.middleware.cors',
-        # sqlalchemy
-        'sqlalchemy',
-        'sqlalchemy.dialects.sqlite',
-        'sqlalchemy.orm',
-        # pydantic
-        'pydantic',
-        'pydantic.v1',
-        # anyio
-        'anyio',
-        'anyio._backends._asyncio',
-        # h11
-        'h11',
-        # email (required by some pydantic validators)
-        'email.mime.text',
-        'email.mime.multipart',
-    ],
+    ] + uvicorn_datas + fastapi_datas + starlette_datas + pydantic_datas,
+    hiddenimports=(
+        uvicorn_hiddenimports
+        + fastapi_hiddenimports
+        + starlette_hiddenimports
+        + sqlalchemy_hiddenimports
+        + pydantic_hiddenimports
+        + anyio_hiddenimports
+        + [
+            'sqlalchemy.dialects.sqlite',
+            'h11',
+            'email.mime.text',
+            'email.mime.multipart',
+        ]
+    ),
     hookspath=[],
     runtime_hooks=[],
     excludes=[],
@@ -79,7 +64,6 @@ exe = EXE(
     strip=False,
     upx=True,
     console=False,  # コンソールウィンドウを非表示
-    icon='assets/icon.ico',
 )
 
 coll = COLLECT(
