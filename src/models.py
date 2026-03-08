@@ -89,6 +89,34 @@ class Issue(Base):
     )
     assignee: Mapped["Member | None"] = relationship("Member", back_populates="issues")
     workflow: Mapped["Workflow | None"] = relationship("Workflow", back_populates="issues")
+    blocked_by_deps: Mapped[list["IssueDependency"]] = relationship(
+        "IssueDependency",
+        foreign_keys="IssueDependency.issue_id",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    blocking_deps: Mapped[list["IssueDependency"]] = relationship(
+        "IssueDependency",
+        foreign_keys="IssueDependency.blocked_by_id",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class IssueDependency(Base):
+    """タスク依存関係モデル.
+
+    issue_id のタスクは blocked_by_id のタスクが完了するまでブロックされる。
+    """
+
+    __tablename__ = "issue_dependencies"
+
+    issue_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("issues.id", ondelete="CASCADE"), primary_key=True
+    )
+    blocked_by_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("issues.id", ondelete="CASCADE"), primary_key=True
+    )
 
 
 class WorkLog(Base):

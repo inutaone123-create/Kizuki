@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from src.database import get_db
-from src.models import Issue
+from src.models import Issue, IssueDependency
 from src.schemas import (
     IssueCreate,
     IssueUpdate,
@@ -42,7 +42,7 @@ def list_issues(
         db: DBセッション
 
     Returns:
-        イシューのリスト
+        blocked_by_ids と is_blocked を含むイシューのリスト
     """
     query = db.query(Issue)
     if status:
@@ -51,7 +51,21 @@ def list_issues(
         query = query.filter(Issue.priority == priority)
     if category:
         query = query.filter(Issue.category == category)
-    return query.order_by(Issue.updated_at.desc()).all()
+    issues_list = query.order_by(Issue.updated_at.desc()).all()
+
+    result = []
+    for issue in issues_list:
+        deps = db.query(IssueDependency).filter(IssueDependency.issue_id == issue.id).all()
+        blocked_by_ids = [d.blocked_by_id for d in deps]
+        is_blocked = False
+        if blocked_by_ids:
+            blockers = db.query(Issue).filter(Issue.id.in_(blocked_by_ids)).all()
+            is_blocked = any(b.status != "done" for b in blockers)
+        item = IssueListResponse.model_validate(issue)
+        item.blocked_by_ids = blocked_by_ids
+        item.is_blocked = is_blocked
+        result.append(item)
+    return result
 
 
 @router.post("", response_model=IssueResponse, status_code=201)
@@ -81,7 +95,7 @@ def get_issue(issue_id: int, db: Session = Depends(get_db)):
         db: DBセッション
 
     Returns:
-        イシュー詳細（作業ログ含む）
+        イシュー詳細（作業ログ・依存関係情報含む）
 
     Raises:
         HTTPException: イシューが存在しない場合
@@ -89,7 +103,16 @@ def get_issue(issue_id: int, db: Session = Depends(get_db)):
     issue = db.query(Issue).filter(Issue.id == issue_id).first()
     if not issue:
         raise HTTPException(status_code=404, detail="Issue not found")
-    return issue
+    deps = db.query(IssueDependency).filter(IssueDependency.issue_id == issue_id).all()
+    blocked_by_ids = [d.blocked_by_id for d in deps]
+    is_blocked = False
+    if blocked_by_ids:
+        blockers = db.query(Issue).filter(Issue.id.in_(blocked_by_ids)).all()
+        is_blocked = any(b.status != "done" for b in blockers)
+    resp = IssueResponse.model_validate(issue)
+    resp.blocked_by_ids = blocked_by_ids
+    resp.is_blocked = is_blocked
+    return resp
 
 
 @router.put("/{issue_id}", response_model=IssueResponse)

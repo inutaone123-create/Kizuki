@@ -231,6 +231,8 @@ class IssueResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     logs: list[WorkLogResponse] = []
+    blocked_by_ids: list[int] = []
+    is_blocked: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -308,5 +310,13 @@ class IssueListResponse(BaseModel):
     workflow: WorkflowInfo | None = None
     created_at: datetime
     updated_at: datetime
+    blocked_by_ids: list[int] = []
+    is_blocked: bool = False
 
     model_config = {"from_attributes": True}
+
+
+class DependencyAdd(BaseModel):
+    """依存関係追加リクエスト."""
+
+    blocked_by_id: int = Field(..., description="このタスクをブロックするタスクID")

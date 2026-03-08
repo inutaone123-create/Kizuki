@@ -1200,3 +1200,13 @@ body {
     padding: 0 12px;
   }
 }
+
+/* ─── 依存関係 ───────────────────────────────────────────────────────────── */
+.dependency-section { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+.dep-list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+.dep-list-label { font-size: 0.85rem; color: var(--text-muted, #888); }
+.dep-item { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.6rem; background: var(--surface, #f8f8f8); border-radius: 4px; margin-bottom: 0.3rem; }
+.dep-item-title { font-size: 0.9rem; flex: 1; margin-right: 0.5rem; }
+.dep-item-status { font-size: 0.75rem; padding: 0.1rem 0.4rem; border-radius: 3px; background: var(--border); margin-right: 0.4rem; }
+.dep-item-status.done { background: #d1fae5; color: #065f46; }
+.badge-blocked { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.7rem; font-weight: bold; }

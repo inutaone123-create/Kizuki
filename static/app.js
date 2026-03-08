@@ -90,6 +90,16 @@ const api = {
     get:    ()     => apiFetch("/api/settings/ai"),
     update: (body) => apiFetch("/api/settings/ai", { method: "PUT", body: JSON.stringify(body) }),
   },
+  dependencies: {
+    get:    (id)                  => apiFetch(`/api/issues/${id}/dependencies`),
+    add:    (id, blocked_by_id)   => apiFetch(`/api/issues/${id}/dependencies`, {
+      method: "POST",
+      body: JSON.stringify({ blocked_by_id }),
+    }),
+    remove: (id, blocked_by_id)   => apiFetch(`/api/issues/${id}/dependencies/${blocked_by_id}`, {
+      method: "DELETE",
+    }),
+  },
 };
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
@@ -164,6 +174,11 @@ function buildCard(issue) {
     }
   }
 
+  // ブロック中バッジ
+  const blockedBadge = issue.is_blocked
+    ? '<span class="badge badge-blocked">🔒 ブロック中</span>'
+    : "";
+
   const hasFooter = assigneeHtml || wfStepHtml;
 
   card.innerHTML = `
@@ -172,6 +187,7 @@ function buildCard(issue) {
       <span class="priority-badge ${issue.priority}">${PRIORITY_LABEL[issue.priority]}</span>
       ${issue.category ? `<span class="category-badge">${escHtml(issue.category)}</span>` : ""}
       ${tags}
+      ${blockedBadge}
     </div>
     ${hasFooter ? `<div class="card-footer">${wfStepHtml}${assigneeHtml}</div>` : ""}`;
 
@@ -367,12 +383,100 @@ async function openDetail(id) {
     // ワークフロー進捗表示
     renderWorkflowSection(issue);
 
+    // 依存関係表示
+    await renderDependencies(issue.id);
+
     await renderLogs(issue.id);
     openModal("modal-detail");
   } catch (e) {
     showToast(`エラー: ${e.message}`);
   }
 }
+
+// ─── Dependencies ─────────────────────────────────────────────────────────────
+
+async function renderDependencies(issueId) {
+  const container = document.getElementById("dep-blocked-by-items");
+  container.innerHTML = "";
+  try {
+    const data = await api.dependencies.get(issueId);
+    if (data.blocked_by.length === 0) {
+      container.innerHTML = `<div class="empty-col" style="font-size:0.85rem;">ブロッカーなし</div>`;
+    } else {
+      data.blocked_by.forEach(blocker => {
+        const statusClass = blocker.status === "done" ? "done" : "";
+        const statusLabel = blocker.status === "done" ? "完了" : blocker.status === "in_progress" ? "進行中" : "未着手";
+        const item = document.createElement("div");
+        item.className = "dep-item";
+        item.innerHTML = `
+          <span class="dep-item-title">${escHtml(blocker.title)}</span>
+          <span class="dep-item-status ${statusClass}">${statusLabel}</span>
+          <button class="btn btn-ghost btn-sm" onclick="removeDependency(${issueId}, ${blocker.id})">✕</button>
+        `;
+        container.appendChild(item);
+      });
+    }
+  } catch (e) {
+    container.innerHTML = `<div class="empty-col" style="font-size:0.85rem;">取得失敗</div>`;
+  }
+}
+
+async function removeDependency(issueId, blockerId) {
+  try {
+    await api.dependencies.remove(issueId, blockerId);
+    showToast("依存関係を削除しました");
+    await renderDependencies(issueId);
+    await loadIssues();
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
+}
+
+document.getElementById("btn-add-dep").addEventListener("click", async () => {
+  const issue = state.currentIssue;
+  if (!issue) return;
+
+  // 現在のイシュー以外の全イシューを選択肢に出す
+  const otherIssues = state.issues.filter(i => i.id !== issue.id);
+  if (otherIssues.length === 0) {
+    showToast("追加できるタスクがありません");
+    return;
+  }
+
+  const selectHtml = `<select id="dep-select" class="dep-select" style="margin:0.5rem 0;width:100%;padding:0.3rem;">` +
+    otherIssues.map(i => `<option value="${i.id}">${escHtml(i.title)}</option>`).join("") +
+    `</select>`;
+
+  const container = document.getElementById("dep-blocked-by-items");
+  const formDiv = document.createElement("div");
+  formDiv.id = "dep-add-form";
+  formDiv.innerHTML = `
+    ${selectHtml}
+    <div style="display:flex;gap:0.5rem;margin-top:0.3rem;">
+      <button id="btn-dep-confirm" class="btn btn-primary btn-sm">追加</button>
+      <button id="btn-dep-cancel" class="btn btn-ghost btn-sm">キャンセル</button>
+    </div>
+  `;
+  container.appendChild(formDiv);
+
+  document.getElementById("btn-dep-confirm").addEventListener("click", async () => {
+    const selectedId = Number(document.getElementById("dep-select").value);
+    try {
+      await api.dependencies.add(issue.id, selectedId);
+      showToast("依存関係を追加しました");
+      await renderDependencies(issue.id);
+      await loadIssues();
+    } catch (e) {
+      const msg = await e.json?.().then(j => j.detail).catch(() => e.message);
+      showToast(`エラー: ${msg || e.message}`);
+      await renderDependencies(issue.id);
+    }
+  });
+
+  document.getElementById("btn-dep-cancel").addEventListener("click", async () => {
+    await renderDependencies(issue.id);
+  });
+});
 
 function renderWorkflowSection(issue) {
   const section = document.getElementById("workflow-section");
