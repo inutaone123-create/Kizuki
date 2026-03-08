@@ -243,6 +243,7 @@ https://github.com/inutaone123-create/Kizuki
 - 第4弾: https://qiita.com/inuta-one/items/1f167bde2159ac53a030
 - 第5弾: https://qiita.com/inuta-one/items/3aded768d7f5249439dc
 - 第6弾: https://qiita.com/inuta-one/items/874ca5c9dfa759341e75
+- 第7弾: https://qiita.com/inuta-one/items/1588fb1a9e84eb66e4c3
 
 ### Python / FastAPI
 - `async def` エンドポイント × 同期 SQLAlchemy `Session` は問題なく共存できる（httpx の await だけが非同期）
