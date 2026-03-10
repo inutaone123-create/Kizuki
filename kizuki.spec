@@ -26,7 +26,6 @@ a = Analysis(
     datas=[
         ('static', 'static'),
         ('src', 'src'),
-        ('templates', 'templates'),
     ] + uvicorn_datas + fastapi_datas + starlette_datas + pydantic_datas,
     hiddenimports=(
         uvicorn_hiddenimports
