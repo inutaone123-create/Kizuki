@@ -554,6 +554,14 @@ body {
   display: grid;
 }
 
+#tab-settings.active {
+  display: flex;
+}
+
+#tab-report.active {
+  display: flex;
+}
+
 /* ── Memo screen ── */
 .memo-screen {
   padding: 20px 24px;
@@ -762,7 +770,6 @@ body {
   padding: 20px 24px;
   max-width: 900px;
   margin: 0 auto;
-  display: flex;
   flex-direction: column;
   gap: 32px;
 }
@@ -942,7 +949,6 @@ body {
   padding: 20px 24px;
   max-width: 900px;
   margin: 0 auto;
-  display: flex;
   flex-direction: column;
   gap: 16px;
 }
