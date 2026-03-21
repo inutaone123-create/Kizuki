@@ -154,6 +154,24 @@ def test_delete_memo_not_found(client: TestClient):
     assert res.status_code == 404
 
 
+def test_get_memo_by_id(client: TestClient):
+    """GET /api/memos/{id} でメモを1件取得できる."""
+    res = client.post("/api/memos", json={"content": "単体取得テスト"})
+    assert res.status_code == 201
+    memo_id = res.json()["id"]
+
+    get_res = client.get(f"/api/memos/{memo_id}")
+    assert get_res.status_code == 200
+    assert get_res.json()["id"] == memo_id
+    assert get_res.json()["content"] == "単体取得テスト"
+
+
+def test_get_memo_by_id_not_found(client: TestClient):
+    """GET /api/memos/{id} で存在しないIDは404を返す."""
+    res = client.get("/api/memos/99999")
+    assert res.status_code == 404
+
+
 def test_list_memos_filter_by_issue_id(client: TestClient):
     """GET /api/memos?issue_id=N でタスクに紐付いたメモだけ返る."""
     issue_a = create_issue(client, "タスクA")

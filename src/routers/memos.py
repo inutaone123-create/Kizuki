@@ -83,6 +83,26 @@ def create_memo(body: MemoCreate, db: Session = Depends(get_db)):
     return _to_memo_response(log)
 
 
+@router.get("/{memo_id}", response_model=MemoResponse)
+def get_memo(memo_id: int, db: Session = Depends(get_db)):
+    """メモを1件取得する.
+
+    Args:
+        memo_id: メモID
+        db: DBセッション
+
+    Returns:
+        メモ
+
+    Raises:
+        HTTPException: メモが存在しない場合
+    """
+    log = db.query(WorkLog).filter(WorkLog.id == memo_id).first()
+    if not log:
+        raise HTTPException(status_code=404, detail="Memo not found")
+    return _to_memo_response(log)
+
+
 @router.put("/{memo_id}", response_model=MemoResponse)
 def update_memo(memo_id: int, body: MemoUpdate, db: Session = Depends(get_db)):
     """メモを更新する（内容・日付・タスク紐付けを変更可能）.

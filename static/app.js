@@ -64,6 +64,7 @@ const api = {
   memos: {
     list:        ()            => apiFetch("/api/memos"),
     listByIssue: (issueId)     => apiFetch(`/api/memos?issue_id=${issueId}`),
+    get:         (id)          => apiFetch(`/api/memos/${id}`),
     create:      (body)        => apiFetch("/api/memos", { method: "POST", body: JSON.stringify(body) }),
     update:      (id, body)    => apiFetch(`/api/memos/${id}`, { method: "PUT", body: JSON.stringify(body) }),
     delete:      (id)          => apiFetch(`/api/memos/${id}`, { method: "DELETE" }),
@@ -701,8 +702,15 @@ function openCreateMemoModal() {
 }
 
 async function openEditMemoModal(memoId) {
-  const memo = state.memos.find(m => m.id === memoId);
-  if (!memo) return;
+  let memo = state.memos.find(m => m.id === memoId);
+  if (!memo) {
+    try {
+      memo = await api.memos.get(memoId);
+      state.memos.push(memo);
+    } catch {
+      return;
+    }
+  }
   state.currentMemo = memo;
   document.getElementById("memo-id").value = memo.id;
   document.getElementById("m-date").value = memo.logged_at;
