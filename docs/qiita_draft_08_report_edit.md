@@ -1,4 +1,4 @@
-<!-- 公開URL: https://qiita.com/inuta-one/private/1750b0d0ba55f000eff2 -->
+<!-- 公開URL: https://qiita.com/inuta-one/items/484f93ffe1c19270ca67 -->
 ---
 title: 個人カンバンツールに「日報の後日編集・提出・クリップボードコピー」を追加した話
 tags:
@@ -10,7 +10,7 @@ tags:
 emoji: 📝
 type: tech
 topics: []
-published: false
+published: true
 ---
 
 # 個人カンバンツールに「日報の後日編集・提出・クリップボードコピー」を追加した話
