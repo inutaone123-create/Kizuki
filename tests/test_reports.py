@@ -272,3 +272,24 @@ def test_list_reports_has_status(client: TestClient):
     res = client.get("/api/reports")
     assert res.status_code == 200
     assert "status" in res.json()[0]
+
+
+def test_revert_report_to_draft(client: TestClient):
+    """提出済みレポートを下書きに戻せる."""
+    created = generate_report(client, "daily", "2026-03-04")
+    client.post(f"/api/reports/{created['id']}/submit")
+    res = client.post(f"/api/reports/{created['id']}/revert")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "draft"
+    assert data["submitted_at"] is None
+
+
+def test_revert_report_allows_edit(client: TestClient):
+    """下書きに戻したレポートは PATCH で編集できる."""
+    created = generate_report(client, "daily", "2026-03-04")
+    client.post(f"/api/reports/{created['id']}/submit")
+    client.post(f"/api/reports/{created['id']}/revert")
+    res = client.patch(f"/api/reports/{created['id']}", json={"content": "戻して編集"})
+    assert res.status_code == 200
+    assert res.json()["content"] == "戻して編集"

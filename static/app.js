@@ -88,6 +88,7 @@ const api = {
     get:      (id)         => apiFetch(`/api/reports/${id}`),
     update:   (id, body)   => apiFetch(`/api/reports/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
     submit:   (id)         => apiFetch(`/api/reports/${id}/submit`, { method: "POST" }),
+    revert:   (id)         => apiFetch(`/api/reports/${id}/revert`, { method: "POST" }),
     delete:   (id)         => apiFetch(`/api/reports/${id}`, { method: "DELETE" }),
   },
   aiSettings: {
@@ -1176,9 +1177,10 @@ async function openReportDetail(reportId, editMode = false) {
     document.getElementById("report-modal-content").innerHTML =
       typeof marked !== "undefined" ? marked.parse(report.content) : `<pre>${escHtml(report.content)}</pre>`;
 
-    // 提出済みは編集不可
-    document.getElementById("btn-edit-report").style.display = submitted ? "none" : "";
+    // 提出済みは編集不可、下書きに戻すは提出済みのみ表示
+    document.getElementById("btn-edit-report").style.display   = submitted ? "none" : "";
     document.getElementById("btn-submit-report").style.display = submitted ? "none" : "";
+    document.getElementById("btn-revert-report").style.display = submitted ? ""     : "none";
     _setReportEditMode(!submitted && editMode);
 
     openModal("modal-report");
@@ -1227,13 +1229,33 @@ document.getElementById("btn-submit-report").addEventListener("click", async () 
     _currentReport = updated;
     document.getElementById("report-modal-status-badge").innerHTML =
       `<span class="report-status-submitted">✅ 提出済</span>`;
-    document.getElementById("btn-edit-report").style.display = "none";
+    document.getElementById("btn-edit-report").style.display   = "none";
     document.getElementById("btn-submit-report").style.display = "none";
+    document.getElementById("btn-revert-report").style.display = "";
     state.reports = state.reports.map(r => r.id === updated.id ? { ...r, status: "submitted" } : r);
     renderReportList();
     showToast("レポートを提出済みにしました");
   } catch (e) {
     showToast(`提出に失敗: ${e.message}`);
+  }
+});
+
+document.getElementById("btn-revert-report").addEventListener("click", async () => {
+  if (!_currentReport) return;
+  if (!confirm("このレポートを下書きに戻しますか？\n再び編集できるようになります。")) return;
+  try {
+    const updated = await api.reports.revert(_currentReport.id);
+    _currentReport = updated;
+    document.getElementById("report-modal-status-badge").innerHTML =
+      `<span class="report-status-draft">📝 下書き</span>`;
+    document.getElementById("btn-edit-report").style.display   = "";
+    document.getElementById("btn-submit-report").style.display = "";
+    document.getElementById("btn-revert-report").style.display = "none";
+    state.reports = state.reports.map(r => r.id === updated.id ? { ...r, status: "draft" } : r);
+    renderReportList();
+    showToast("下書きに戻しました");
+  } catch (e) {
+    showToast(`失敗: ${e.message}`);
   }
 });
 

@@ -143,6 +143,31 @@ def submit_report(report_id: int, db: Session = Depends(get_db)):
     return report
 
 
+@router.post("/{report_id}/revert", response_model=ReportResponse)
+def revert_report(report_id: int, db: Session = Depends(get_db)):
+    """レポートを下書きに戻す.
+
+    Args:
+        report_id: レポートID
+        db: DBセッション
+
+    Returns:
+        更新されたレポート
+
+    Raises:
+        HTTPException: レポートが存在しない場合
+    """
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    if report.status != "draft":
+        report.status = "draft"
+        report.submitted_at = None
+        db.commit()
+        db.refresh(report)
+    return report
+
+
 @router.delete("/{report_id}", status_code=204)
 def delete_report(report_id: int, db: Session = Depends(get_db)):
     """レポートを削除する.
