@@ -1,3 +1,4 @@
+<!-- 公開URL: https://qiita.com/inuta-one/private/1750b0d0ba55f000eff2 -->
 ---
 title: 個人カンバンツールに「日報の後日編集・提出・クリップボードコピー」を追加した話
 tags:
