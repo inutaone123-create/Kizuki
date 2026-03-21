@@ -63,6 +63,7 @@ const api = {
   },
   memos: {
     list:        ()            => apiFetch("/api/memos"),
+    listByIssue: (issueId)     => apiFetch(`/api/memos?issue_id=${issueId}`),
     create:      (body)        => apiFetch("/api/memos", { method: "POST", body: JSON.stringify(body) }),
     update:      (id, body)    => apiFetch(`/api/memos/${id}`, { method: "PUT", body: JSON.stringify(body) }),
     delete:      (id)          => apiFetch(`/api/memos/${id}`, { method: "DELETE" }),
@@ -393,6 +394,7 @@ async function openDetail(id) {
     await renderDependencies(issue.id);
 
     await renderLogs(issue.id);
+    await renderDetailMemos(issue.id);
     openModal("modal-detail");
   } catch (e) {
     showToast(`エラー: ${e.message}`);
@@ -691,6 +693,59 @@ function openCreateMemoModal() {
   openModal("modal-memo");
 }
 
+async function renderDetailMemos(issueId) {
+  const container = document.getElementById("detail-memo-list");
+  container.innerHTML = "";
+  try {
+    const memos = await api.memos.listByIssue(issueId);
+    // state.memos にマージ（openEditMemoModal が参照できるよう）
+    memos.forEach(m => {
+      if (!state.memos.find(s => s.id === m.id)) state.memos.push(m);
+      else Object.assign(state.memos.find(s => s.id === m.id), m);
+    });
+    if (memos.length === 0) {
+      container.innerHTML = `<div class="empty-col" style="font-size:0.85rem;">紐付きメモなし</div>`;
+      return;
+    }
+    memos.forEach(memo => {
+      const item = document.createElement("div");
+      item.className = "log-item";
+      item.innerHTML = `
+        <div class="log-item-header">
+          <span class="log-item-date">${memo.logged_at}</span>
+          <div class="log-item-actions">
+            <button class="btn btn-ghost btn-sm" onclick="openEditMemoModal(${memo.id})">✏️ 編集</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteMemoFromDetail(${memo.id})">🗑️ 削除</button>
+          </div>
+        </div>
+        <div class="log-item-content">${escHtml(memo.content)}</div>
+      `;
+      container.appendChild(item);
+    });
+  } catch (e) {
+    container.innerHTML = `<div class="empty-col" style="font-size:0.85rem;">取得失敗</div>`;
+  }
+}
+
+async function deleteMemoFromDetail(memoId) {
+  if (!confirm("このメモを削除しますか？")) return;
+  try {
+    await api.memos.delete(memoId);
+    showToast("メモを削除しました");
+    state.memos = state.memos.filter(m => m.id !== memoId);
+    if (state.currentIssue) await renderDetailMemos(state.currentIssue.id);
+  } catch (e) {
+    showToast(`エラー: ${e.message}`);
+  }
+}
+
+document.getElementById("btn-add-memo-from-detail").addEventListener("click", () => {
+  openCreateMemoModal();
+  if (state.currentIssue) {
+    document.getElementById("m-issue").value = state.currentIssue.id;
+  }
+});
+
 async function openEditMemoModal(memoId) {
   const memo = state.memos.find(m => m.id === memoId);
   if (!memo) return;
@@ -732,6 +787,7 @@ document.getElementById("memo-form").addEventListener("submit", async (e) => {
     }
     closeModal("modal-memo");
     await loadMemos();
+    if (state.currentIssue) await renderDetailMemos(state.currentIssue.id);
   } catch (e) {
     showToast(`エラー: ${e.message}`);
   }

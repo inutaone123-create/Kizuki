@@ -7,7 +7,7 @@ This implementation: 2026
 License: MIT
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from src.database import get_db
@@ -38,20 +38,23 @@ def _to_memo_response(log: WorkLog) -> MemoResponse:
 
 
 @router.get("", response_model=list[MemoResponse])
-def list_memos(db: Session = Depends(get_db)):
+def list_memos(
+    issue_id: int | None = Query(None),
+    db: Session = Depends(get_db),
+):
     """全メモ一覧を取得する（logged_at 降順）.
 
     Args:
+        issue_id: 絞り込むタスクID（省略時は全件）
         db: DBセッション
 
     Returns:
         メモのリスト（新しい日付順）
     """
-    logs = (
-        db.query(WorkLog)
-        .order_by(WorkLog.logged_at.desc(), WorkLog.created_at.desc())
-        .all()
-    )
+    query = db.query(WorkLog)
+    if issue_id is not None:
+        query = query.filter(WorkLog.issue_id == issue_id)
+    logs = query.order_by(WorkLog.logged_at.desc(), WorkLog.created_at.desc()).all()
     return [_to_memo_response(log) for log in logs]
 
 

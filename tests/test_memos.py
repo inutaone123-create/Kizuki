@@ -154,6 +154,23 @@ def test_delete_memo_not_found(client: TestClient):
     assert res.status_code == 404
 
 
+def test_list_memos_filter_by_issue_id(client: TestClient):
+    """GET /api/memos?issue_id=N でタスクに紐付いたメモだけ返る."""
+    issue_a = create_issue(client, "タスクA")
+    issue_b = create_issue(client, "タスクB")
+    client.post("/api/memos", json={"content": "Aのメモ", "issue_id": issue_a["id"]})
+    client.post("/api/memos", json={"content": "Bのメモ", "issue_id": issue_b["id"]})
+    client.post("/api/memos", json={"content": "独立メモ"})
+
+    res = client.get(f"/api/memos?issue_id={issue_a['id']}")
+    assert res.status_code == 200
+    memos = res.json()
+    assert all(m["issue_id"] == issue_a["id"] for m in memos)
+    assert any(m["content"] == "Aのメモ" for m in memos)
+    assert not any(m["content"] == "Bのメモ" for m in memos)
+    assert not any(m["content"] == "独立メモ" for m in memos)
+
+
 def test_delete_issue_sets_memo_issue_id_null(client: TestClient):
     """タスクを削除すると、紐付きメモの issue_id が null になる."""
     issue = create_issue(client, "削除するタスク")
