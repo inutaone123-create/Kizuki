@@ -53,6 +53,10 @@ results/
 *.npy
 *.mat
 
+# 環境変数（トークン等の秘密情報）
+.env
+.env.local
+
 # Claude Code（設定・キャッシュは除外、agentsはコミット対象）
 .claude/todos/
 .claude/*.log
