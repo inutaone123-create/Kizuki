@@ -271,6 +271,13 @@ class ReportGenerateRequest(BaseModel):
     target_date: date
 
 
+class ReportUpdate(BaseModel):
+    """レポート更新リクエスト."""
+
+    title: str | None = Field(None, min_length=1, max_length=200)
+    content: str | None = Field(None, min_length=1)
+
+
 class ReportListItem(BaseModel):
     """レポート一覧アイテム（content を含まない軽量版）."""
 
@@ -280,7 +287,9 @@ class ReportListItem(BaseModel):
     period_end: date
     title: str
     is_ai_generated: bool
+    status: str
     created_at: datetime
+    updated_at: datetime
 
     model_config = {"from_attributes": True}
 
@@ -289,6 +298,7 @@ class ReportResponse(ReportListItem):
     """レポート詳細レスポンス（content を含む）."""
 
     content: str
+    submitted_at: datetime | None = None
 
 
 # ---------- Issue スキーマ ----------

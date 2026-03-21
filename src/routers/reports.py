@@ -7,12 +7,14 @@ This implementation: 2026
 License: MIT
 """
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from src.database import get_db
 from src.models import Report
-from src.schemas import ReportGenerateRequest, ReportListItem, ReportResponse
+from src.schemas import ReportGenerateRequest, ReportListItem, ReportResponse, ReportUpdate
 from src.services.ai_service import generate_report
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
@@ -84,6 +86,60 @@ def get_report(report_id: int, db: Session = Depends(get_db)):
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
+    return report
+
+
+@router.patch("/{report_id}", response_model=ReportResponse)
+def update_report(report_id: int, body: ReportUpdate, db: Session = Depends(get_db)):
+    """レポートのタイトル・本文を編集する（提出済みは不可）.
+
+    Args:
+        report_id: レポートID
+        body: 更新データ（変更しないフィールドは None）
+        db: DBセッション
+
+    Returns:
+        更新されたレポート
+
+    Raises:
+        HTTPException: レポートが存在しない場合、または提出済みの場合
+    """
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    if report.status == "submitted":
+        raise HTTPException(status_code=409, detail="提出済みレポートは編集できません")
+    data = body.model_dump(exclude_unset=True)
+    for key, value in data.items():
+        setattr(report, key, value)
+    report.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(report)
+    return report
+
+
+@router.post("/{report_id}/submit", response_model=ReportResponse)
+def submit_report(report_id: int, db: Session = Depends(get_db)):
+    """レポートを提出済みにする（編集ロック）.
+
+    Args:
+        report_id: レポートID
+        db: DBセッション
+
+    Returns:
+        更新されたレポート
+
+    Raises:
+        HTTPException: レポートが存在しない場合
+    """
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    if report.status != "submitted":
+        report.status = "submitted"
+        report.submitted_at = datetime.utcnow()
+        db.commit()
+        db.refresh(report)
     return report
 
 

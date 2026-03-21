@@ -171,4 +171,9 @@ class Report(Base):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     is_ai_generated: Mapped[bool] = mapped_column(Integer, default=False)
+    status: Mapped[str] = mapped_column(String(20), default="draft", server_default="draft")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, server_default="1970-01-01 00:00:00"
+    )
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

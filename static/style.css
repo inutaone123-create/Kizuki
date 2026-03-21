@@ -1110,6 +1110,72 @@ body {
   flex-shrink: 0;
 }
 
+/* ── Report status badges ── */
+.report-status-draft {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  padding: 2px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.report-status-submitted {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #065f46;
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+  padding: 2px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+/* ── Report modal header ── */
+.report-modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.report-modal-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Report editor ── */
+.report-title-input {
+  width: 100%;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.report-editor {
+  width: 100%;
+  min-height: 320px;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+/* ── Modal footer ── */
+.modal-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.report-footer-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 /* ── Modal lg ── */
 .modal-lg {
   width: 760px;

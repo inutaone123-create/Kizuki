@@ -202,3 +202,73 @@ def test_february_monthly_range(client: TestClient):
     data = generate_report(client, "monthly", "2026-02-15")
     assert data["period_start"] == "2026-02-01"
     assert data["period_end"] == "2026-02-28"
+
+
+# ─── レポート編集・提出テスト ──────────────────────────────────────────────────
+
+
+def test_generate_report_has_draft_status(client: TestClient):
+    """生成直後のレポートは status=draft である."""
+    data = generate_report(client, "daily", "2026-03-04")
+    assert data["status"] == "draft"
+
+
+def test_update_report_content(client: TestClient):
+    """PATCH でレポートの本文を編集できる."""
+    created = generate_report(client, "daily", "2026-03-04")
+    res = client.patch(
+        f"/api/reports/{created['id']}",
+        json={"content": "# 編集後の日報\n- 修正しました"},
+    )
+    assert res.status_code == 200
+    assert res.json()["content"] == "# 編集後の日報\n- 修正しました"
+    assert res.json()["status"] == "draft"
+
+
+def test_update_report_title(client: TestClient):
+    """PATCH でレポートのタイトルを編集できる."""
+    created = generate_report(client, "daily", "2026-03-04")
+    res = client.patch(
+        f"/api/reports/{created['id']}",
+        json={"title": "編集後タイトル"},
+    )
+    assert res.status_code == 200
+    assert res.json()["title"] == "編集後タイトル"
+
+
+def test_submit_report(client: TestClient):
+    """POST /submit でレポートが提出済みになる."""
+    created = generate_report(client, "daily", "2026-03-04")
+    res = client.post(f"/api/reports/{created['id']}/submit")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "submitted"
+    assert data["submitted_at"] is not None
+
+
+def test_submit_report_idempotent(client: TestClient):
+    """提出済みのレポートを再度 submit しても 200 を返す（冪等）."""
+    created = generate_report(client, "daily", "2026-03-04")
+    client.post(f"/api/reports/{created['id']}/submit")
+    res = client.post(f"/api/reports/{created['id']}/submit")
+    assert res.status_code == 200
+    assert res.json()["status"] == "submitted"
+
+
+def test_update_submitted_report_returns_409(client: TestClient):
+    """提出済みレポートへの PATCH は 409 を返す."""
+    created = generate_report(client, "daily", "2026-03-04")
+    client.post(f"/api/reports/{created['id']}/submit")
+    res = client.patch(
+        f"/api/reports/{created['id']}",
+        json={"content": "変更しようとしても弾かれる"},
+    )
+    assert res.status_code == 409
+
+
+def test_list_reports_has_status(client: TestClient):
+    """一覧レスポンスに status フィールドが含まれる."""
+    generate_report(client, "daily", "2026-03-04")
+    res = client.get("/api/reports")
+    assert res.status_code == 200
+    assert "status" in res.json()[0]

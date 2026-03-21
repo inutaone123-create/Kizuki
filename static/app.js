@@ -86,6 +86,8 @@ const api = {
     list:     ()           => apiFetch("/api/reports"),
     generate: (body)       => apiFetch("/api/reports/generate", { method: "POST", body: JSON.stringify(body) }),
     get:      (id)         => apiFetch(`/api/reports/${id}`),
+    update:   (id, body)   => apiFetch(`/api/reports/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+    submit:   (id)         => apiFetch(`/api/reports/${id}/submit`, { method: "POST" }),
     delete:   (id)         => apiFetch(`/api/reports/${id}`, { method: "DELETE" }),
   },
   aiSettings: {
@@ -1089,7 +1091,12 @@ function renderReportList() {
     container.innerHTML = `<div class="empty-col">レポートがありません。⚡ 生成ボタンで作成してください。</div>`;
     return;
   }
-  container.innerHTML = state.reports.map(r => `
+  container.innerHTML = state.reports.map(r => {
+    const submitted = r.status === "submitted";
+    const statusBadge = submitted
+      ? `<span class="report-status-submitted">✅ 提出済</span>`
+      : `<span class="report-status-draft">📝 下書き</span>`;
+    return `
     <div class="report-item">
       <div class="report-item-left">
         <span class="report-type-badge" style="background:${REPORT_TYPE_COLOR[r.report_type]}">${REPORT_TYPE_LABEL[r.report_type]}</span>
@@ -1097,14 +1104,17 @@ function renderReportList() {
         <span class="${r.is_ai_generated ? "report-ai-badge" : "report-template-badge"}">
           ${r.is_ai_generated ? "🤖 AI" : "📋 テンプレ"}
         </span>
+        ${statusBadge}
       </div>
       <div class="report-item-right">
         <span class="report-item-date">${r.created_at.slice(0, 10)}</span>
         <button class="btn btn-ghost btn-sm" onclick="openReportDetail(${r.id})">👁 表示</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteReport(${r.id})">🗑️</button>
+        ${!submitted ? `<button class="btn btn-ghost btn-sm" onclick="openReportDetail(${r.id}, true)">✏️ 編集</button>` : ""}
+        ${!submitted ? `<button class="btn btn-danger btn-sm" onclick="deleteReport(${r.id})">🗑️</button>` : ""}
       </div>
     </div>
-  `).join("");
+  `;
+  }).join("");
 }
 
 async function generateReport() {
@@ -1132,10 +1142,31 @@ async function generateReport() {
   }
 }
 
-async function openReportDetail(reportId) {
+let _currentReport = null;
+
+function _setReportEditMode(editMode) {
+  document.getElementById("report-modal-content").style.display       = editMode ? "none" : "";
+  document.getElementById("report-modal-editor-wrap").style.display   = editMode ? ""     : "none";
+  document.getElementById("btn-edit-report").style.display            = editMode ? "none" : "";
+  document.getElementById("btn-cancel-edit-report").style.display     = editMode ? ""     : "none";
+  document.getElementById("report-footer-view").style.display         = editMode ? "none" : "";
+  document.getElementById("report-footer-edit").style.display         = editMode ? ""     : "none";
+}
+
+async function openReportDetail(reportId, editMode = false) {
   try {
     const report = await api.reports.get(reportId);
+    _currentReport = report;
+
     document.getElementById("report-modal-title").textContent = report.title;
+    document.getElementById("report-modal-title-input").value = report.title;
+    document.getElementById("report-modal-editor").value = report.content;
+
+    const submitted = report.status === "submitted";
+    document.getElementById("report-modal-status-badge").innerHTML = submitted
+      ? `<span class="report-status-submitted">✅ 提出済</span>`
+      : `<span class="report-status-draft">📝 下書き</span>`;
+
     const badge = `<span class="report-type-badge" style="background:${REPORT_TYPE_COLOR[report.report_type]}">${REPORT_TYPE_LABEL[report.report_type]}</span>`;
     const ai = report.is_ai_generated
       ? `<span class="report-ai-badge">🤖 AI生成</span>`
@@ -1144,9 +1175,87 @@ async function openReportDetail(reportId) {
       `${badge} ${ai} <span class="report-period">${report.period_start} 〜 ${report.period_end}</span>`;
     document.getElementById("report-modal-content").innerHTML =
       typeof marked !== "undefined" ? marked.parse(report.content) : `<pre>${escHtml(report.content)}</pre>`;
+
+    // 提出済みは編集不可
+    document.getElementById("btn-edit-report").style.display = submitted ? "none" : "";
+    document.getElementById("btn-submit-report").style.display = submitted ? "none" : "";
+    _setReportEditMode(!submitted && editMode);
+
     openModal("modal-report");
   } catch (e) {
     showToast(`レポート取得に失敗: ${e.message}`);
+  }
+}
+
+document.getElementById("btn-edit-report").addEventListener("click", () => {
+  if (!_currentReport) return;
+  _setReportEditMode(true);
+});
+
+document.getElementById("btn-cancel-edit-report").addEventListener("click", () => {
+  if (!_currentReport) return;
+  document.getElementById("report-modal-title-input").value = _currentReport.title;
+  document.getElementById("report-modal-editor").value = _currentReport.content;
+  _setReportEditMode(false);
+});
+
+document.getElementById("btn-save-report").addEventListener("click", async () => {
+  if (!_currentReport) return;
+  const title   = document.getElementById("report-modal-title-input").value.trim();
+  const content = document.getElementById("report-modal-editor").value.trim();
+  if (!title || !content) { showToast("タイトルと内容を入力してください"); return; }
+  try {
+    const updated = await api.reports.update(_currentReport.id, { title, content });
+    _currentReport = updated;
+    document.getElementById("report-modal-title").textContent = updated.title;
+    document.getElementById("report-modal-content").innerHTML =
+      typeof marked !== "undefined" ? marked.parse(updated.content) : `<pre>${escHtml(updated.content)}</pre>`;
+    _setReportEditMode(false);
+    state.reports = state.reports.map(r => r.id === updated.id ? { ...r, title: updated.title, updated_at: updated.updated_at } : r);
+    renderReportList();
+    showToast("レポートを保存しました");
+  } catch (e) {
+    showToast(`保存に失敗: ${e.message}`);
+  }
+});
+
+document.getElementById("btn-submit-report").addEventListener("click", async () => {
+  if (!_currentReport) return;
+  if (!confirm("このレポートを提出済みにしますか？\n提出後は編集できなくなります。")) return;
+  try {
+    const updated = await api.reports.submit(_currentReport.id);
+    _currentReport = updated;
+    document.getElementById("report-modal-status-badge").innerHTML =
+      `<span class="report-status-submitted">✅ 提出済</span>`;
+    document.getElementById("btn-edit-report").style.display = "none";
+    document.getElementById("btn-submit-report").style.display = "none";
+    state.reports = state.reports.map(r => r.id === updated.id ? { ...r, status: "submitted" } : r);
+    renderReportList();
+    showToast("レポートを提出済みにしました");
+  } catch (e) {
+    showToast(`提出に失敗: ${e.message}`);
+  }
+});
+
+async function copyReport(format) {
+  if (!_currentReport) return;
+  let text = _currentReport.content;
+  if (format === "text") {
+    // Markdown記号を除去してプレーンテキスト化
+    text = text
+      .replace(/^#{1,6}\s+/gm, "")
+      .replace(/\*\*(.+?)\*\*/g, "$1")
+      .replace(/\*(.+?)\*/g, "$1")
+      .replace(/`(.+?)`/g, "$1")
+      .replace(/^\s*[-*+]\s+/gm, "・")
+      .replace(/^\s*\d+\.\s+/gm, "")
+      .trim();
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast(format === "markdown" ? "Markdown でコピーしました" : "テキストでコピーしました");
+  } catch {
+    showToast("コピーに失敗しました（ブラウザの権限を確認してください）");
   }
 }
 
